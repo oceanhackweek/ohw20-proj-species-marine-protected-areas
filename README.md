@@ -15,3 +15,5 @@ Potential projects:
  - Linking an OBIS taxon download with OBPG satellite measurements
  - Connecting es50 diversity with oceanographic features
 
+**Quick git instructions**
+ - coming soon
