@@ -10,3 +10,8 @@ Some interesting resources:
  - es50 biodiversity measurement 
    - https://data-blog.gbif.org/post/exploring-es50-for-gbif/
    - https://github.com/jhnwllr/es50
+
+Potential projects:
+ - Linking an OBIS taxon download with OBPG satellite measurements
+ - Connecting es50 diversity with oceanographic features
+
