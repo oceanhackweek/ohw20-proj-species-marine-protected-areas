@@ -16,4 +16,4 @@ Potential projects:
  - Connecting es50 diversity with oceanographic features
 
 **Quick git instructions**
- - coming soon
+ - https://oceanhackweek.github.io/ohw-resources/prep/git/#git-steps-and-workflows
