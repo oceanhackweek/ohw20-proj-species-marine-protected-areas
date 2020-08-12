@@ -19,3 +19,23 @@ E.glacialis <- occurrence("Eubalaena glacialis")
 names(E.glacialis)
 ```
 
+## OBPG - getting and managing the data
+
+Let's assume that we settle on piloting project this around a particular region with an agreed upon bounding box and date/time window.  We next need to chose environemtnal parameters (chlor_a, sst, etc) and resolutions  (4km or 9km) to work with. Finally, we should agree upon how to store the data (directory heirarchy, format, naming convention.)
+
+If we chose to use R we have a pre-built solution in the [ohwobpg](https://github.com/BigelowLab/ohwobpg) R package.  It will grab OPeNDAP resources from OBPG and save in geotiff format using a prespecified directory heirarchy.  It also provides simple and flexible databasing functionality to facilitate access.
+
+If we chose to use Python we may need to roll our own tool to achieve the same functionality.  Some links to help...
+
+ + [A MUR example](https://climate-cms.org/2019/01/18/using-opendap.html)
+ 
+ + [xarray docs](http://xarray.pydata.org/en/stable/why-xarray.html)
+ 
+We will need to consider how we manage the fact that OBPG is midstream in a filename convention upgrade.  So we'll need to manage the old-style vs new-style conventions as painlessly as possible for the user.
+
+## OBPG extracting data
+
+In R we can easily extract points (or patches of points, or points either along a polyline or within a polygon) using the [raster](https://CRAN.R-project.org/package=raster) package.  See this [tutorial](https://github.com/oceanhackweek/ohw20-tutorials/blob/master/08-R-tutorials/08-extracting_rasters.ipynb)
+
+I'm sure that we can do the same in Python using xarray, but that is new territory to explore.
+
