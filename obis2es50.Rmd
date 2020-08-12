@@ -1,0 +1,21 @@
+---
+title: "obis2obpg"
+author: "Nicholas R. Record"
+date: "8/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## obis2es50
+
+Using OBIS taxa download to get diversity measurements
+
+```{r}
+library(robis)
+E.glacialis <- occurrence("Eubalaena glacialis")
+names(E.glacialis)
+```
+
