@@ -1,0 +1,52 @@
+---
+title: "mpa_poly"
+author: "btupper"
+date: "8/13/2020"
+output: html_document
+---
+
+## NOAA MPA polygons
+
+### Get them and save them in your home directory
+
+First we get the polygons from NOAA and save them in our home directories. I'm thinking we might want to use the newer (2020) set of polygons.  I put it in an if-block so you won't accidentally run this twice (which is not a problem but may annoy you.)
+    
+```{r}
+source("get_mpa_poly.R")
+home_path <- normalizePath("~")
+if (!dir.exists(file.path(home_path, "NOAA_MPAI_2020_IUCN_gdb/NOAA_MPAI_v2020.gdb"))){
+    ok <- download_noaa_mpa(dest_dir = home_path)
+    if (ok != 0) stop("something went wrong")
+}
+```
+
+
+Now we can read in the polygons - set the site_id argument to all to read them all. But for the sake of an example, we will susequently select those within the Gulf of Maine bounding box that matches the OBPG toy dataset.
+
+```{r}
+library(sf)
+library(dplyr)
+
+# https://rdrr.io/cran/sf/man/st_bbox.html
+# make BBOX and POLYGON objects in case we need them
+BB <- c(xmin = -72, xmax = -63, ymin = 39, ymax = 46)
+BB_box <- sf::st_bbox(BB, crs = st_crs(4326))
+BB_poly <- sf::st_as_sfc(BB_box, crs = st_crs(4326))
+```
+
+Get the ones that fit within the GoM bounding box.
+
+```{r}
+MPA <- read_noaa_mpa(year = "2020", site_id = 'all') %>%
+  clip_noaa_mpa(bb = BB)
+```
+
+
+Let's see what we have.
+
+```{r}
+library(leaflet)
+leaflet::leaflet(data = MPA) %>%
+  leaflet::addTiles() %>%
+  leaflet::addPolygons()
+```
