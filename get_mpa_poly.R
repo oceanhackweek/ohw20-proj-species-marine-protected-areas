@@ -16,11 +16,12 @@ library(sf)
 download_noaa_mpa <- function(url = "https://marineprotectedareas.noaa.gov/media/data/NOAA_MPAI_2020_IUCN_gdb.zip",
                               dest_dir = "."){
   
+  ofile <- file.path(dest_dir,basename(url))
   # not so big, but slooow server
-  ok <- download.file(url, 
-                      file.path(dest_dir, basename(url)))
+  ok <- download.file(url, ofile, mode = 'wb')
   if (ok == 0){
-    file_list <- unzip(basename(url))
+    file_list <- unzip(ofile,
+                       exdir = sub(".zip", "", ofile))
   } else {
     stop("download of file failed")
   }
@@ -32,9 +33,10 @@ download_noaa_mpa <- function(url = "https://marineprotectedareas.noaa.gov/media
 #' @param path the path to the data directory
 #' @param site_id character, one or more site identifiers, aet to "all" to get all
 #' @return sf class object
-read_noaa_mpa <- function(path = "NOAA_MPAI_v2020.gdb",
+read_noaa_mpa <- function(path = normalizePath("~/NOAA_MPAI_2020_IUCN_gdb/NOAA_MPAI_v2020.gdb"),
                           site_id = c("MA15", "MA16", "MA17")){
-  x <- sf::read_sf(path)
+  x <- sf::read_sf(path) %>%
+    sf::st_transform(crs = st_crs(4326))
   if (!("all" %in% site_id)) x <- x %>% dplyr::filter(Site_ID %in% site_id)
   x
 }
@@ -49,12 +51,13 @@ read_noaa_mpa <- function(path = "NOAA_MPAI_v2020.gdb",
 download_noaa_inv <- function(url = "https://nmsmarineprotectedareas.blob.core.windows.net/marineprotectedareas-prod/media/archive/pdf/helpful-resources/inventory/mpa_inventory_2014_public_shp.zip",
                               dest_dir = "."){
   
+  ofile <- file.path(dest_dir,basename(url))
+    
   # not so big, but slooow server
-  ok <- download.file(url, 
-                      file.path(dest_dir, basename(url)))
+  ok <- download.file(url, ofile)
   if (ok == 0){
-    file_list <- unzip(basename(url), 
-                       exdir = sub(".zip", "", basename(url)))
+    file_list <- unzip(ofile, 
+                       exdir = sub(".zip", "", ofile))
   } else {
     stop("download of file failed")
   }
@@ -66,7 +69,7 @@ download_noaa_inv <- function(url = "https://nmsmarineprotectedareas.blob.core.w
 #' @param path the path to the data directory
 #' @param site_id character, one or more site identifiers, aet to "all" to get all
 #' @return sf class object
-read_noaa_inv <- function(path = "mpa_inventory_2014_public_shp",
+read_noaa_inv <- function(path = normalizePath("~/mpa_inventory_2014_public_shp"),
                           site_id = c("MA15", "MA16", "MA17")){
   x <- sf::read_sf(path)
   if (!("all" %in% site_id)) x <- x %>% dplyr::filter(Site_ID %in% site_id)
