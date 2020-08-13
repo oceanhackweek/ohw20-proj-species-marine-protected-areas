@@ -1,0 +1,130 @@
+
+---
+title: "Extract OBIS Records from MPA shapefile + summarize "
+author: "Natalie Low"
+output: html_notebook
+---
+
+```{r load_libraries}
+# libraries
+
+library(sf)
+library(robis)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+```
+
+
+
+```{r}
+# OBIS request function occurrence() in robis requires a text-formatted geometry input
+# this is a simple helper function to convert a standard polygon shapefile into a suitable text-formatted geometry
+
+extract_polygon_geometry <- function(polygon) {
+  polygon %>%
+    st_geometry(.) %>%
+    st_as_text(.) %>%
+    return(.)
+}
+```
+
+
+
+```{r load_shapefiles}
+
+# Load sample polygons - California MPA file
+# Can replace this with global polygons when those are available
+
+ca_mpa_polygons <- st_read("shapefiles/california_mpas/ca_all_mpas.geojson")
+
+
+# subset a couple of MPA polygons
+
+# Soquel Canyon is a little more offshore
+soquel_canyon_smca <- ca_mpa_polygons %>% filter(MPA_NAME == "Soquel Canyon SMCA")
+
+# Point Lobos is more coastal but an older MPA
+point_lobos_smca <-ca_mpa_polygons %>% filter(MPA_NAME == "Point Lobos SMCA")
+
+```
+
+---
+
+```{r retrieve_obis_records}
+# pull OBIS records for two California MPAs
+
+soquel_canyon_records <- occurrence(geometry = extract_polygon_geometry(soquel_canyon_smca))
+point_lobos_records <- occurrence(geometry = extract_polygon_geometry(point_lobos_smca))
+
+```
+
+Note: the two output datasets contain different numbers of fields - not sure why?
+
+```{r}
+# identify fields not in common between the two output datasets
+
+names(soquel_canyon_records)[which(!names(soquel_canyon_records) %in% names(point_lobos_records))]
+
+names(point_lobos_records)[which(!names(point_lobos_records) %in% names(soquel_canyon_records))]
+
+
+```
+
+
+Some notes on key fields: 
+- there are multiple date-associated fields: date_year, date_start, date_start, date_mid, year, month, day
+- relevant for sampling efforts: dataset_id, datasetID
+- taxonomic identifiers: kingdom 
+
+
+```{r}
+
+head(soquel_canyon_records)
+
+```
+
+
+---
+
+### Histogram of record numbers
+
+```{r message=FALSE, warning=FALSE}
+
+# plots of some MPAs
+
+grid.arrange(
+  ggplot() +
+    geom_histogram(data = soquel_canyon_records, aes(x = date_year), stat="count") +
+    labs(title = "Soquel Canyon SMCA", y = "Number of records"),
+  
+  ggplot() +
+    geom_histogram(data = point_lobos_records, aes(x = date_year), stat="count") +
+    labs(title = "Point Lobos SMCA", y = "Number of records")
+)
+
+```
+
+---
+
+### Records by phylum
+
+
+```{r message=FALSE, warning=FALSE}
+rbind(soquel_canyon_records %>% 
+        mutate(MPA = "Soquel Canyon SMCA") %>%
+        select(MPA, kingdom, phylum, class, order, family, genus, species),
+      point_lobos_records %>% 
+        mutate(MPA = "Point Lobos SMCA") %>%
+        select(MPA, kingdom, phylum, class, order, family, genus, species)
+) %>%
+  group_by(MPA, phylum) %>%
+  summarize(n = n()) %>%
+  pivot_wider(names_from = MPA, values_from = n)
+      
+      
+
+```
