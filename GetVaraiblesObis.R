@@ -6,11 +6,17 @@ library(biomod2, quietly = TRUE)
 library(ggplot2, quietly = TRUE)
 library(raster, quietly = TRUE)
 library(viridis, quietly = TRUE)
-source("Scripts/do_fetch.R")
+
+# this part is tricky - let's assume the users is in the project directory
+#source("Scripts/do_fetch.R")
+source("do_fetch.R")
 
 ## Create a directory to download satelite data to plug into marine protected areas (mpa)
 
-path <- "/home/user/Escritorio/TIOJORGE/CONGRESOS_PRESENTACIONES/2020/OceanHawk/Scripts/mpa" # It has to be automatized to function or directory
+# for uniformity, we'll place it in the user's home directory
+# path <- "/home/user/Escritorio/TIOJORGE/CONGRESOS_PRESENTACIONES/2020/OceanHawk/Scripts/mpa" # It has to be automatized to function or directory
+path <- normalizePath("~/Anhell_obpg")
+
 
 ## If first time create a specific folder. If not, go directly to read_database
 dir.create(path, recursive = TRUE, showWarnings = TRUE)
@@ -23,7 +29,9 @@ minLat<- -40
 maxLat<- -30
 minLon<- -60
 maxLon<- -50
-LatLon<-c(minLat,maxLat, minLon, maxLon)
+# order is [west, east, south, north]
+#LatLon<-c(minLat,maxLat, minLon, maxLon)
+LatLon <- c(minLon, maxLon, minLat, maxLat)
 
 TimeStart<- as.Date("2016-01-01")
 TimeEnd<- as.Date("2017-01-01")
@@ -96,3 +104,11 @@ db_par<- db %>%
 sst_stack<-raster::stack(as_filename(db_sst,path))
 chloa_stack<-raster::stack(as_filename(db_chloa,path))
 par_stack<-raster::stack(as_filename(db_par,path))
+
+# a test - I don't really want it to run, so I enclose in a FALSE if-block
+# but I can copy-paste to run as needed
+if (FALSE){
+  png("~/sst_panel_plot.png", width = 1000, height = 1000)
+  rasterVis::levelplot(sst_stack, names.att = format(db_sst$date, "%Y-%b"))
+  dev.off()
+}
