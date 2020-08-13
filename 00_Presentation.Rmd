@@ -1,0 +1,33 @@
+---
+title: "Presentation on OBIS project"
+output: html_notebook
+---
+
+
+```{r}
+a <- 1
+```
+
+# Download MPA polygons from NOAA
+
+
+# Choose MPA polygon(s) of interest
+
+
+# Get all species in MPA(s) from OBIS
+
+
+# Compute and plot ES50
+
+
+# Choose a taxonomic group of interest
+
+
+# Get sightings locations/times of taxonomic group
+
+
+# Get associated environmental data and visualize
+
+
+
+
