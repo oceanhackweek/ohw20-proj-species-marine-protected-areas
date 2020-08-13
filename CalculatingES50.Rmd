@@ -1,0 +1,49 @@
+---
+title: "CalculatingES50"
+author: "Natalie Posdaljian"
+date: "8/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Hurlbert's index, or ES50, is the expected number of distinct species in a random sample of 50 observations; it is a bias-indepenent indicator on marine biodiversity richness. It has the ability to somewhat correct for sampling bias.
+
+Assumptions of ES50
+- That indivdiuals are randomly distributed
+- Sample size is sufficiently large
+- Samples are taxonomically similar
+- All samples have been taken in the same manner
+
+```{r}
+#loading robis
+installed <- rownames(installed.packages())
+if ( !("robis" %in% installed) ){
+   if ( !("remotes" %in% installed) )install.packages("remotes")
+   remotes::install_github("iobis/robis")
+}
+
+#load libraries
+library(robis)
+library('ggplot2')
+library("rnaturalearth")
+library("rnaturalearthdata")
+library(roperators)
+library(dplyr)
+library(dggridR)
+library(magrittr) 
+```
+
+Load all occurences within a specificed polygon. (WARNING: using Casco Bay for now, but this will eventually be the MPA polygons)
+
+```{r}
+CascoBay <- occurrence(geometry = "POLYGON ((-70.2 43.5, -69.8 43.5, -69.8 43.9, -70.2 43.9, -70.2 43.5)) ")
+```
+
+User Specified metrics
+```{r}
+rank <- "scientificName"
+```
+
