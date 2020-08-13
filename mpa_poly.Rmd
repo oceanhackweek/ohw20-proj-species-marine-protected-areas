@@ -15,7 +15,7 @@ First we get the polygons from NOAA and save them in our home directories. I'm t
 source("get_mpa_poly.R")
 home_path <- normalizePath("~")
 if (!dir.exists(file.path(home_path, "NOAA_MPAI_2020_IUCN_gdb/NOAA_MPAI_v2020.gdb"))){
-    ok <- download_noaa_mpa(dest_dir = home_path)
+    ok <- download_noaa_mpa_2020(dest_dir = home_path)
     if (ok != 0) stop("something went wrong")
 }
 ```
