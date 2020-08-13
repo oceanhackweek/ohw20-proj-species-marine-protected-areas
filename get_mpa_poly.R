@@ -13,7 +13,7 @@ library(sf)
 #' @param url character, the URL of the MPA dataset
 #' @param dest_dir the destination directory where we save the data
 #' @return integer, 0 if successful
-download_noaa_mpa_020 <- function(url = "https://marineprotectedareas.noaa.gov/media/data/NOAA_MPAI_2020_IUCN_gdb.zip",
+download_noaa_mpa_2020 <- function(url = "https://marineprotectedareas.noaa.gov/media/data/NOAA_MPAI_2020_IUCN_gdb.zip",
                               dest_dir = "."){
   
   ofile <- file.path(dest_dir,basename(url))
