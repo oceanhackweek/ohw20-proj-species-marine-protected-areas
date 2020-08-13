@@ -18,7 +18,7 @@ download_noaa_mpa <- function(url = "https://marineprotectedareas.noaa.gov/media
   
   # not so big, but slooow server
   ok <- download.file(url, 
-                      file.path(dst_dir, basename(url)))
+                      file.path(dest_dir, basename(url)))
   if (ok == 0){
     file_list <- unzip(basename(url))
   } else {
@@ -51,7 +51,7 @@ download_noaa_inv <- function(url = "https://nmsmarineprotectedareas.blob.core.w
   
   # not so big, but slooow server
   ok <- download.file(url, 
-                      file.path(dst_dir, basename(url)))
+                      file.path(dest_dir, basename(url)))
   if (ok == 0){
     file_list <- unzip(basename(url), 
                        exdir = sub(".zip", "", basename(url)))
