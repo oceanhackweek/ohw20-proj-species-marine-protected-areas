@@ -36,8 +36,9 @@ download_noaa_mpa_2020 <- function(url = "https://marineprotectedareas.noaa.gov/
 read_noaa_mpa_2020 <- function(path = normalizePath("~/NOAA_MPAI_2020_IUCN_gdb/NOAA_MPAI_v2020.gdb"),
                           site_id = c("MA15", "MA16", "MA17")){
   x <- sf::read_sf(path) %>%
-    sf::st_transform(crs = st_crs(4326)) %>%
-    dplyr::bind_cols(st_bbox_by_feature(x))
+    sf::st_transform(crs = st_crs(4326))
+  xy_limits <- st_bbox_by_feature(x)
+  x <- dplyr::bind_cols(x, xy_limits)
   if (!("all" %in% site_id)) x <- x %>% dplyr::filter(Site_ID %in% site_id)
   x
 }
@@ -72,8 +73,9 @@ download_noaa_mpa_2014 <- function(url = "https://nmsmarineprotectedareas.blob.c
 #' @return sf class object
 read_noaa_mpa_2014 <- function(path = normalizePath("~/mpa_inventory_2014_public_shp"),
                           site_id = c("MA15", "MA16", "MA17")){
-  x <- sf::read_sf(path)  %>%
-    dplyr::bind_cols(st_bbox_by_feature(x))
+  x <- sf::read_sf(path)  
+  xy_limits <- st_bbox_by_feature(x)
+  x <- dplyr::bind_cols(x, xy_limits)
   if (!("all" %in% site_id)) x <- x %>% dplyr::filter(Site_ID %in% site_id)
   x
 }
@@ -101,12 +103,11 @@ read_noaa_mpa <- function(year = c("2014", "2020")[2], ...){
 #' @param x data frame of simple features
 #' @return data frame (tibble) of xmin, ymin, xmax, and ymax 
 st_bbox_by_feature = function(x) {
-  x = st_geometry(x)
-  f <- function(y) {
-    #bb <- st_as_sfc(st_bbox(y))
-    as.vector(st_bbox(y))
+  x <- sf::st_geometry(x)
+  get_bb_as_vector <- function(y) {
+    as.vector(sf::st_bbox(y))
   }
-  z <- do.call(rbind, lapply(x, f))
+  z <- do.call(rbind, lapply(x, get_bb_as_vector))
   colnames(z) <- c("xmin", "ymin", "xmax", "ymax")
   dplyr::as_tibble(z)
 }
