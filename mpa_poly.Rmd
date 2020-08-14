@@ -42,11 +42,12 @@ MPA <- read_noaa_mpa(year = "2020", site_id = 'all') %>%
 ```
 
 
-Let's see what we have.
+
+Let's see what we have.  Note the addition of popups - click on a polygon to have its identification "popup".
 
 ```{r}
 library(leaflet)
 leaflet::leaflet(data = MPA) %>%
   leaflet::addTiles() %>%
-  leaflet::addPolygons()
+  leaflet::addPolygons(popup = ~sprintf("%s: %s",Site_ID, Site_Name ) )
 ```
