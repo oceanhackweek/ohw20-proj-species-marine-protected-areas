@@ -57,7 +57,7 @@ extract_obis_date <- function(x = c("2016-01-02", "2016-01-03T05:06:07", "June 2
   as.Date(substring(x, 1, nchar("1234-56-78")), format = "%Y-%m-%d")
 }
 
-SpeciesOccurences$eventDate = extract_obis_date(SpeciesOccurence$eventDate) #change eventDate from character to date
+SpeciesOccurence$eventDate = extract_obis_date(SpeciesOccurence$eventDate) #change eventDate from character to date
 
 #calculate the number of unique species
 SpeciesCount <- aggregate(SpeciesOccurence$Count, by=list(Category=SpeciesOccurence$scientificName),FUN=sum)
