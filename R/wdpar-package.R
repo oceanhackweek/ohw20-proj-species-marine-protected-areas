@@ -3,7 +3,11 @@
 # Adaptation of https://cran.r-project.org/web/packages/wdpar/vignettes/wdpar.html
 
 # be sure you have moved to the Code/R directory first
-source("setup.R")
+
+# I don't think we need this anymore
+# source("setup.R")
+
+# but we do need these
 source("google-filestream.R")
 library(wdpar)
 
@@ -55,7 +59,6 @@ wdpa_write_country <- function(x, country = "Genovia",
   x
 }
 
-
 #' Read a previously downloaded WDPA dataset for a country
 #' 
 #' @param country character, the name of the country
@@ -76,6 +79,50 @@ wdpa_read_country <- function(country = 'Cuba',
 }
 
 
+
+#' Generate a sf object of random points within and around a set of polygons.
+#' 
+#' Polygons are expanded by \code{buffer}, and then samples are drawn from
+#' those.  See \code{\link[sf]{st_buffer}}
+#' 
+#' @param x sf object of polygons
+#' @param buffer
+#' @param n integer, the number of points
+#' @return a sf object of n points
+random_points <- function(x = wdpa_read_country(),
+                          buffer = 0.1,
+                          n = 1000){
+  
+  pts <- suppressMessages(suppressWarnings(sf::st_buffer(x, dist = buffer) %>%
+                            sf::st_sample(size = n)))
+  return(pts)
+}
+
+#' Given a set of MPAs and observations, 
+#' determine which observations belong to which MPA
+#'
+#' @param mpa sf object of MPA polygons
+#' @param obs sf object of observation points
+#' @param ... other arguments for \code{\link[sf{st_intersects}}
+#' @return a list of match vectors by index. If obs has 1000 points
+#'   then a 1000 length list of integer vectors is returned where each
+#'   vector has zero or more integers indicating which mpa polygon each 
+#'   belongs to. For example, the first 3 points below do not intersect
+#'   any polygons, while the 4th intersects with 3 polygons and the 
+#'   the 5th intersects with just one.
+#'    $ : int(0) 
+#'    $ : int(0) 
+#'    $ : int(0) 
+#'    $ : int [1:3] 42 71 177
+#'    $ : int 40
+mpa_match <- function(mpa = wdpa_read_country(country = "Iceland"),
+                      obs = random_points(mpa),
+                      ...){
+  
+  z <- sf::st_intersects(obs, mpa, ...)
+  return(z)
+}
+
 iceland_example <- function(){
   require(leaflet)
   x <- wdpa_read_country("Iceland") %>%
@@ -85,3 +132,34 @@ iceland_example <- function(){
     leaflet::addTiles() %>%
     leaflet::addPolygons()
 }
+
+random_points_example <- function(){
+  
+  mpa <- wdpa_read_country("Cuba")
+  pts <- random_points(mpa, n = 500, buffer = 0.1)
+  
+  inout <- lengths(mpa_match(mpa, pts)) > 0
+  
+    cols <- c("orange", "green")[as.numeric(inout)+1]
+  pchs <- c("x", "+")[as.numeric(inout)+1]
+  plot(sf::st_geometry(mpa), col = "transparent")
+  plot(sf::st_geometry(pts), col = cols, pch = pchs, add = TRUE)
+  
+  # throws error on pts
+  # Error in UseMethod("metaData") : 
+  #  no applicable method for 'metaData' applied to an object of class "c('sfc_POINT', 'sfc')"
+  # require(leaflet)
+  # pal <- colorFactor(c("orange", "green"), domain = c("FALSE", "TRUE"))
+  # leaflet::leaflet(data = mpa) %>%
+  #   leaflet::addTiles() %>%
+  #   leaflet::addPolygons() %>%
+  #   leaflet::addCircleMarkers(data = pts,
+  #                             radius = 6,
+  #                             stroke = FALSE,
+  #                             opacity = 0.6,
+  #                             color = ~pal(as.character(inout)))
+  
+}
+
+
+
