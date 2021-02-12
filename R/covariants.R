@@ -1,5 +1,6 @@
 ## Code to extract co-variant data for MPAS
 ## Jan 15, 2020
+##Updated Feb 11, 2021 - JE and RF
 
 library(sf)
 library(dplyr)
@@ -18,51 +19,59 @@ WDPA <- wdpa_read_country("Iceland") %>%
 
 #read in GEBCO data - 2014 dataset, 30 arc-sec
 GEBCO <- raster("C:/Users/renef/Dropbox/UMaine/Code/GEBCO/GEBCO_2014_2d.nc")
-#read in MaskedGEBCO data (see below for creation of dataset)
+#read in MaskedGEBCO data 
 MaskedGEBCO <- raster("C:/Users/renef/Dropbox/UMaine/Code/GEBCO/MaskedGEBCO.nc")
-#mask GEBCO - Ran on 1/18/2021
-#saved as MaskedGEBCO for future use
-#GEBCO_land_1 <- GEBCO
-#GEBCO_land_1[GEBCO_land_1 > 0] <- 1
-#maskedGEBCO <- mask(GEBCO_land_1, GEBCO_land_1, inverse = TRUE, maskvalue = 1, updatevalue = 0)
-
-#to make it such that land = NA and sea = 0:
-#MaskedGEBCO_NA <- mask(MaskedGEBCO, MaskedGEBCO, maskvalue = 1)
-#to make it such that sea = NA and land = 1:
-#MaskedGEBCO_NA_SEA <- mask(MaskedGEBCO, MaskedGEBCO, maskvalue = 0)
-
 
 #read in EarthByte Roughness database - rotates from original
 EarthByteRotate <- raster("C:/Users/renef/Dropbox/UMaine/Code/EarthbyteData/roughness_100km.15.2_rotated.nc")
-#read in original EarthByte roughness data
-#EarthByte <- raster("C:/Users/renef/Dropbox/UMaine/Code/EarthbyteData/roughness_100km.15.2.nc", varname = "z")
-#EarthByteRotate <- rotate(EarthByte)
-
-#######
-
-#extract geometry from GEBCO database, calculate mean depth
-Mean_depth <- extract(GEBCO, WDPA, fun = mean)
-
-#extract geometry from EarthByte Roughness database, calculate mean roughness
-#correct for that the README says values in mGals, multipled by 100
-Mean_roughness <- (extract(EarthByteRotate, WDPA, fun = mean)/100)
 
 
-#retrieve maxlat, minlat, maxlon, minlon
-MPA_ext <- as.data.frame(t(sapply(1:nrow(WDPA), function(i) as.vector(extent(WDPA[i,])))))
-colnames(MPA_ext) <- c('xmin', 'xmax', 'ymin', 'ymax')
+################################################
+###### Calculate Covariants and Create DF ######
+################################################
 
-#calculate mean lat and mean lon, add to MPA_ext dataframe
-MPA_ext <- MPA_ext %>% 
-            mutate(mean_lon = (xmin+xmax)/2) %>% 
-            mutate(mean_lat = (ymin+ymax)/2)
-
-#Calculate minimum distance from edge of MPA to land
-
-
-
-
-#Create dataframe with Covariants
+##### Create Dataframe to mutate
 Covariant_df <- WDPA[,c("WDPAID", "STATUS_YR", "REP_AREA", "IUCN_CAT", "geom")]
-Covariant_df <- cbind(Covariant_df, Mean_depth, MPA_ext, Mean_roughness)
+
+
+
+#extract geometry from GEBCO database, calculate mean depth & mean roughness, add to covariant_df
+#extract geometry from EarthByte Roughness database, calculate mean roughness <- NEED TO FIX
+#correct for that the README says values in mGals, multipled by 100
+
+Covariant_df <- Covariant_df %>%
+  dplyr::mutate(Mean_depth = extract(GEBCO, WDPA, fun = mean),
+                Mean_roughness = extract(EarthByteRotate, WDPA, fun = mean)/100)
+
+
+#retrieve maxlat, minlat, maxlon, minlon, calculate mean lat and mean long, add to covariant_df
+
+Covariant_df <- Covariant_df %>%
+  dplyr::mutate(as.data.frame(t(sapply(1:nrow(WDPA), function(i) as.vector(extent(WDPA[i,]))))),
+                mean_lon = (V1+V2)/2,
+                mean_lat = (V3+V4)/2)
+
+
+#### Calculate minimum distance from edge of MPA to land ####
+
+
+#Calculate time points for each MPA, add to covariant_df
+
+Covariant_df <- Covariant_df %>% 
+  dplyr::filter(STATUS_YR > 0) %>% 
+  dplyr::mutate(age = 2021 - STATUS_YR,
+                prior20 = STATUS_YR - 20,
+                after10 = STATUS_YR + 10,
+                after20 = STATUS_YR + 20,
+                after40 = STATUS_YR + 40,
+                after60 = STATUS_YR + 60,
+                after80 = STATUS_YR + 80,
+                after100 = STATUS_YR + 100,
+                after120 = STATUS_YR + 120) %>%
+  dplyr::relocate(geom, .after = after120)
+
+
+
+#Recode ICUN to be numberic instead of character?
+
 
