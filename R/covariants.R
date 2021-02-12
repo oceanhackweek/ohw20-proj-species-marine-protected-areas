@@ -8,14 +8,11 @@ library(wdpar)
 library(terra)
 library(raster)
 library(ncdf4)
-source("setup.R")
+#source("setup.R") do not need with new googledrive setup
 source("wdpar-package.R")
-source("Rene-setup.R")
 
 # Run wdpa_read_country function from wdpar-package.R 
-WDPA <- wdpa_read_country("Iceland") %>%
-  dplyr::arrange(desc(REP_AREA)) %>% #organize by largest to smallest
-  dplyr::filter(MARINE == 2) #only accept those that are completely marine
+#only accept those that are completely marine
 
 #read in GEBCO data - 2014 dataset, 30 arc-sec
 GEBCO <- raster("C:/Users/renef/Dropbox/UMaine/Code/GEBCO/GEBCO_2014_2d.nc")
@@ -36,20 +33,19 @@ Covariant_df <- WDPA[,c("WDPAID", "STATUS_YR", "REP_AREA", "IUCN_CAT", "geom")]
 
 
 #extract geometry from GEBCO database, calculate mean depth & mean roughness, add to covariant_df
-#extract geometry from EarthByte Roughness database, calculate mean roughness <- NEED TO FIX
-#correct for that the README says values in mGals, multipled by 100
+
+#HOW DOES TERRAIN WORK??? raster::extract results in a list!
 
 Covariant_df <- Covariant_df %>%
-  dplyr::mutate(Mean_depth = extract(GEBCO, WDPA, fun = mean),
-                Mean_roughness = extract(EarthByteRotate, WDPA, fun = mean)/100)
-
+  dplyr::mutate(Mean_depth = extract(GEBCO, WDPA, fun = mean))
 
 #retrieve maxlat, minlat, maxlon, minlon, calculate mean lat and mean long, add to covariant_df
 
 Covariant_df <- Covariant_df %>%
   dplyr::mutate(as.data.frame(t(sapply(1:nrow(WDPA), function(i) as.vector(extent(WDPA[i,]))))),
                 mean_lon = (V1+V2)/2,
-                mean_lat = (V3+V4)/2)
+                mean_lat = (V3+V4)/2) %>%
+  dplyr::rename(xmin = V1, xmax = V2, ymin = V3, ymax = V4)
 
 
 #### Calculate minimum distance from edge of MPA to land ####

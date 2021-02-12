@@ -10,7 +10,7 @@ library(readr)
 #' @param x dribble - see \code{\link[googledrive]{drive_get}}
 #' @param path character or NULL, if character provide the full path specification
 #'   for saving the file.  If NULL the file is not saved to disk.
-#' @param read_fun the unquoted finction name to read the file with
+#' @param read_fun the unquoted function name to read the file with
 #' @param ... other arguments for \code{read_fun}
 #' @return varies with \code{read_fun}
 drive_read <- function (x, path = NULL, read_fun, ...){
