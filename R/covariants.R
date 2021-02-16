@@ -14,13 +14,14 @@ source("wdpar-package.R")
 # Run wdpa_read_country function from wdpar-package.R 
 #only accept those that are completely marine
 
+WDPA <- wdpa_read_country("Iceland") %>%
+  dplyr::arrange(desc(REP_AREA)) %>% #organize by largest to smallest
+  dplyr::filter(MARINE >= 1) 
+
 #read in GEBCO data - 2014 dataset, 30 arc-sec
 GEBCO <- raster("C:/Users/renef/Dropbox/UMaine/Code/GEBCO/GEBCO_2014_2d.nc")
 #read in MaskedGEBCO data 
 MaskedGEBCO <- raster("C:/Users/renef/Dropbox/UMaine/Code/GEBCO/MaskedGEBCO.nc")
-
-#read in EarthByte Roughness database - rotates from original
-EarthByteRotate <- raster("C:/Users/renef/Dropbox/UMaine/Code/EarthbyteData/roughness_100km.15.2_rotated.nc")
 
 
 ################################################
@@ -32,12 +33,14 @@ Covariant_df <- WDPA[,c("WDPAID", "STATUS_YR", "REP_AREA", "IUCN_CAT", "geom")]
 
 
 
-#extract geometry from GEBCO database, calculate mean depth & mean roughness, add to covariant_df
-
-#HOW DOES TERRAIN WORK??? raster::extract results in a list!
+#extract geometry from GEBCO database, calculate mean depth & mean slope, add to covariant_df
+#calculate slope for entire GEBCO raster... if correct, this could be saved as a file so it doesnt need to be remade each time
+Allterrain <- raster::terrain(GEBCO, opt="slope", unit = "degrees", neighbors=8)
 
 Covariant_df <- Covariant_df %>%
-  dplyr::mutate(Mean_depth = extract(GEBCO, WDPA, fun = mean))
+  dplyr::mutate(Mean_depth = extract(GEBCO, WDPA, fun = mean),
+                Mean_slope = extract(Allterrain, WDPA, fun = mean))
+
 
 #retrieve maxlat, minlat, maxlon, minlon, calculate mean lat and mean long, add to covariant_df
 
