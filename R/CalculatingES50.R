@@ -1,0 +1,73 @@
+#loading robis
+installed <- rownames(installed.packages())
+if ( !("robis" %in% installed) ){
+  if ( !("remotes" %in% installed) )install.packages("remotes")
+  remotes::install_github("iobis/robis")
+}
+
+#load libraries
+library(robis)
+library('ggplot2')
+library("rnaturalearth")
+library("rnaturalearthdata")
+library(roperators)
+library(dplyr)
+library(magrittr) 
+library(vegan)
+library(wdpar)
+library(terra)
+library(raster)
+library(ncdf4)
+source("wdpar-package.R")
+
+# Run wdpa_read_country function from wdpar-package.R 
+WDPA <- wdpa_read_country("Iceland") %>%
+  dplyr::arrange(desc(REP_AREA)) %>% #organize by largest to smallest
+  dplyr::filter(MARINE == 2) #only accept those that are completely marine
+
+#Load all occurences within a specified polygon
+SpeciesOccurence <- occurrence(geometry = "POLYGON ((-70.2 43.5, -69.8 43.5, -69.8 43.9, -70.2 43.9, -70.2 43.5)) ")
+
+#Visualize and mutate data
+head(SpeciesOccurence)
+
+#convert individual counts from character to numeric
+SpeciesOccurence$individualCount <- as.numeric(SpeciesOccurence$individualCount)
+SpeciesOccurence$individualCount[is.na(SpeciesOccurence$individualCount)] <- 1 #convert NANs to 1; I'm assuming that if it's listed, there was at least one count, even if it wasn't listed
+SpeciesOccurence$Count <- 1 * SpeciesOccurence$individualCount
+
+#function for extracting obis dates
+extract_obis_date <- function(x = c("2016-01-02", "2016-01-03T05:06:07", "June 29, 1999")){
+  as.Date(substring(x, 1, nchar("1234-56-78")), format = "%Y-%m-%d")
+}
+
+SpeciesOccurence$eventDate = extract_obis_date(SpeciesOccurence$eventDate) #change eventDate from character to date
+
+#calculate the number of unique species
+SpeciesCount <- aggregate(SpeciesOccurence$Count, by=list(Category=SpeciesOccurence$scientificName),FUN=sum)
+head(SpeciesCount)
+hist(SpeciesCount$x)
+
+#Calculate ES50 for all records
+ES50 = rarefy(SpeciesCount$x,50) #calculate ES50
+print(ES50)
+
+#Calculate ES50 before and after a specified date
+MPA_established = as.Date(c("2007-06-22")) #what date was the MPA established
+
+SpeciesOccurence_preMPA <- subset(SpeciesOccurence, SpeciesOccurence$eventDate < MPA_established) #Species Occurences before the MPA was established
+SpeciesOccurence_postMPA <- subset(SpeciesOccurence, SpeciesOccurence$eventDate > MPA_established) #Species Occurences after the MPA was established
+
+#Calculate unique species pre-MPA
+SpeciesCount_preMPA <- aggregate(SpeciesOccurence_preMPA$Count, by=list(Category=SpeciesOccurence_preMPA$scientificName),FUN=sum)
+
+#Calculate ES50 pre-MPA
+ES50_preMPA = rarefy(SpeciesCount_preMPA$x,50) #calculate ES50
+print(ES50_preMPA)
+
+#Calculate unique species post-MPA
+SpeciesCount_postMPA <- aggregate(SpeciesOccurence_postMPA$Count, by=list(Category=SpeciesOccurence_postMPA$scientificName),FUN=sum)
+
+#Calculate ES50 post-MPA
+ES50_postMPA = rarefy(SpeciesCount_postMPA$x,50) #calculate ES50
+print(ES50_postMPA)
