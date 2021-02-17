@@ -27,7 +27,7 @@ source("wdpar-package.R")
 
 # Run wdpa_read_country function from wdpar-package.R 
 WDPA <- wdpa_read_country("Iceland") %>%
-  dplyr::arrange(desc(REP_AREA)) %>% #organize by largest to smallest
+  dplyr::arrange(describe(REP_AREA)) %>% #organize by largest to smallest
   dplyr::filter(MARINE >= 1) 
 
 #create dataframe to mutate
@@ -99,39 +99,47 @@ for (i in 2:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
     ES50_df$ES50_ALL = rarefy(SpeciesCount$x,50) #calculate ES50 for all records
   }
     #Calculate ES50 before and after specified dates
-    SpeciesOccurence_prior20 =subset(SpeciesOccurence, SpeciesOccurence$year < ES50_df$STATUS_YR[i])
+    SpeciesOccurence_prior20 = subset(SpeciesOccurence, SpeciesOccurence$year < ES50_df$STATUS_YR[i])
     SpeciesCount_prior20 <- aggregate(SpeciesOccurence_prior20$Count, by=list(Category=SpeciesOccurence_prior20$scientificName),FUN=sum)
     if (nrow(SpeciesOccurence_prior20) >= 50){
-      ES50_df$ES50_prior20 = rarefy(SpeciesCount_prior20 $x,50) #calculate ES50 for all records
+      ES50_df$ES50_prior20 = rarefy(SpeciesCount_prior20 $x,50) #calculate ES50 prior 20 years
     }
-    SpeciesOccurence_after10
-    SpeciesOccurence_after20
-    SpeciesOccurence_after40
-    SpeciesOccurence_after60
-    SpeciesOccurence_after80
-    SpeciesOccurence_after100
-    SpeciesOccurence_after120
+    SpeciesOccurence_after10 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after10[i])
+    SpeciesCount_after10 <- aggregate(SpeciesOccurence_after10$Count, by=list(Category=SpeciesOccurence_after10$scientificName),FUN=sum)
+    if (nrow(SpeciesOccurence_after10) >= 50){
+      ES50_df$ES50_after10 = rarefy(SpeciesCount_after10 $x,50) #calculate ES50 after 10 years
+    }
+    SpeciesOccurence_after20 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after20[i])
+    SpeciesCount_after20 <- aggregate(SpeciesOccurence_after20$Count, by=list(Category=SpeciesOccurence_after20$scientificName),FUN=sum)
+    if (nrow(SpeciesOccurence_after20) >= 50){
+      ES50_df$ES50_after20 = rarefy(SpeciesCount_after20 $x,50) #calculate ES50 after 20 years
+    }
+    SpeciesOccurence_after40 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after40[i])
+    SpeciesCount_after40 <- aggregate(SpeciesOccurence_after40$Count, by=list(Category=SpeciesOccurence_after40$scientificName),FUN=sum)
+    if (nrow(SpeciesOccurence_after40) >= 50){
+      ES50_df$ES50_after40 = rarefy(SpeciesCount_after40 $x,50) #calculate ES50 after 40 years
+    }
+    SpeciesOccurence_after60 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after60[i])
+    SpeciesCount_after60 <- aggregate(SpeciesOccurence_after60$Count, by=list(Category=SpeciesOccurence_after60$scientificName),FUN=sum)
+    if (nrow(SpeciesOccurence_after60) >= 50){
+      ES50_df$ES50_after60 = rarefy(SpeciesCount_after60 $x,50) #calculate ES50 after 60 years
+    }
+    SpeciesOccurence_after80 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after80[i])
+    SpeciesCount_after80 <- aggregate(SpeciesOccurence_after80$Count, by=list(Category=SpeciesOccurence_after80$scientificName),FUN=sum)
+    if (nrow(SpeciesOccurence_after80) >= 50){
+      ES50_df$ES50_after80 = rarefy(SpeciesCount_after80 $x,50) #calculate ES50 after 80 years
+    }
+    SpeciesOccurence_after100 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after100[i])
+    SpeciesCount_after100 <- aggregate(SpeciesOccurence_after100$Count, by=list(Category=SpeciesOccurence_after100$scientificName),FUN=sum)
+    if (nrow(SpeciesOccurence_after100) >= 50){
+      ES50_df$ES50_after100 = rarefy(SpeciesCount_after100 $x,50) #calculate ES50 after 100 years
+    }
+    SpeciesOccurence_after120 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after120[i])
+    SpeciesCount_after120 <- aggregate(SpeciesOccurence_after120$Count, by=list(Category=SpeciesOccurence_after120$scientificName),FUN=sum)
+    if (nrow(SpeciesOccurence_after120) >= 50){
+      ES50_df$ES50_after120 = rarefy(SpeciesCount_after80 $x,50) #calculate ES50 after 120 years
+    }
   }
   }
 
 
-
-#Calculate ES50 before and after a specified date
-MPA_established = as.Date(c("2007-06-22")) #what date was the MPA established
-
-SpeciesOccurence_preMPA <- subset(SpeciesOccurence, SpeciesOccurence$eventDate < MPA_established) #Species Occurences before the MPA was established
-SpeciesOccurence_postMPA <- subset(SpeciesOccurence, SpeciesOccurence$eventDate > MPA_established) #Species Occurences after the MPA was established
-
-#Calculate unique species pre-MPA
-SpeciesCount_preMPA <- aggregate(SpeciesOccurence_preMPA$Count, by=list(Category=SpeciesOccurence_preMPA$scientificName),FUN=sum)
-
-#Calculate ES50 pre-MPA
-ES50_preMPA = rarefy(SpeciesCount_preMPA$x,50) #calculate ES50
-print(ES50_preMPA)
-
-#Calculate unique species post-MPA
-SpeciesCount_postMPA <- aggregate(SpeciesOccurence_postMPA$Count, by=list(Category=SpeciesOccurence_postMPA$scientificName),FUN=sum)
-
-#Calculate ES50 post-MPA
-ES50_postMPA = rarefy(SpeciesCount_postMPA$x,50) #calculate ES50
-print(ES50_postMPA)
