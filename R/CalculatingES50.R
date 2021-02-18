@@ -83,6 +83,11 @@ ES50_df$SpeciesCount_After120 = NA
 ES50_df$ES50_After120 = NA
 
 #loop through all polygons and extract OBIS data
+blah = st_simplify(ES50_df$geom[[1]])
+blah2 = st_as_text(ES50_df$geom[[1]])
+blah3 = st_convex_hull(ES50_df$geom[[1]])
+blah3 = st_as_text(blah3)
+
 
 for (i in 2:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an error
   SpeciesOccurence = occurrence(geometry = ES50_df$WKT[[i]])
