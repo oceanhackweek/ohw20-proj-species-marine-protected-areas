@@ -65,7 +65,7 @@ ES50_df$SpeciesCountALL = NA
 ES50_df$ES50_ALL = NA
 
 ES50_df$SpeciesCount_prior20 = NA
-ES50_df$ES50__prior20 = NA
+ES50_df$ES50_prior20 = NA
 
 ES50_df$SpeciesCount_after10 = NA
 ES50_df$ES50_after10 = NA
@@ -88,79 +88,116 @@ ES50_df$ES50_after100 = NA
 ES50_df$SpeciesCount_after120 = NA
 ES50_df$ES50_after120 = NA
 
-#loop through all polygons and extract OBIS data
-#blah = st_simplify(ES50_df$geom[[1]])
-#blah2 = st_as_text(ES50_df$geom[[1]])
-#blah3 = st_convex_hull(ES50_df$geom[[1]])
-#blah3 = st_as_text(blah3)
-
 
 for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an error
   hull = st_convex_hull(ES50_df$geom[[i]])
   text = st_as_text(hull)
   SpeciesOccurence = occurrence(geometry = text)
-  if (is.integer(SpeciesOccurence)){
+  if (!is_empty(SpeciesOccurence)){
   if ("individualCount" %in% colnames(SpeciesOccurence)){
   #convert individual counts from character to numeric
-  SpeciesOccurence$individualCount <- as.numeric(SpeciesOccurence$individualCount) 
+  SpeciesOccurence$individualCount <- suppressWarnings(as.numeric(SpeciesOccurence$individualCount))
   SpeciesOccurence$individualCount[is.na(SpeciesOccurence$individualCount)] <- 1 #convert NANs to 1; I'm assuming that if it's listed, there was at least one count, even if it wasn't listed
   SpeciesOccurence$Count <- 1 * SpeciesOccurence$individualCount
-  SpeciesOccurence$eventDate = extract_obis_date(SpeciesOccurence$eventDate) #change eventDate from character to date
+  #SpeciesOccurence$eventDate = extract_obis_date(SpeciesOccurence$eventDate) #change eventDate from character to date
+  } else {
+  SpeciesOccurence$Count = 1
   }
+    
   #calculate the number of unique species
   SpeciesCount <- aggregate(SpeciesOccurence$Count, by=list(Category=SpeciesOccurence$scientificName),FUN=sum)
   ES50_df$SpeciesCountALL[i] = nrow(SpeciesCount)
   if (nrow(SpeciesCount) >= 50){
     ES50_df$ES50_ALL[i] = rarefy(SpeciesCount$x,50) #calculate ES50 for all records
   }
+  
+  if ("date_year" %in% colnames(SpeciesOccurence)){
     #Calculate ES50 before and after specified dates
-    SpeciesOccurence_prior20 = subset(SpeciesOccurence, SpeciesOccurence$year < ES50_df$STATUS_YR[i])
+    SpeciesOccurence_prior20 = subset(SpeciesOccurence, SpeciesOccurence$date_year < ES50_df$STATUS_YR[i])
+    if (dim(SpeciesOccurence_prior20)[1] > 0){
     SpeciesCount_prior20 <- aggregate(SpeciesOccurence_prior20$Count, by=list(Category=SpeciesOccurence_prior20$scientificName),FUN=sum)
     ES50_df$SpeciesCount_prior20[i] = nrow(SpeciesOccurence_prior20) #save the number of species for that time frame
     if (nrow(SpeciesOccurence_prior20) >= 50){
       ES50_df$ES50_prior20[i] = rarefy(SpeciesCount_prior20 $x,50) #calculate ES50 prior 20 years
     }
-    SpeciesOccurence_after10 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after10[i])
-    SpeciesCount_after10 <- aggregate(SpeciesOccurence_after10$Count, by=list(Category=SpeciesOccurence_after10$scientificName),FUN=sum)
+    }
+    
+    if (ES50_df$after10[i] < 2022){
+    SpeciesOccurence_after10 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after10[i])
+    if (dim(SpeciesOccurence_after10)[1] > 0){
+      SpeciesCount_after10 <- aggregate(SpeciesOccurence_after10$Count, by=list(Category=SpeciesOccurence_after10$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after10[i] = nrow(SpeciesOccurence_after10) #save the number of species for that time frame
     if (nrow(SpeciesOccurence_after10) >= 50){
       ES50_df$ES50_after10[i] = rarefy(SpeciesCount_after10 $x,50) #calculate ES50 after 10 years
     }
-    SpeciesOccurence_after20 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after20[i])
+    }
+    }
+    
+    if (ES50_df$after20[i] < 2022){
+    SpeciesOccurence_after20 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after20[i])
+    if (dim(SpeciesOccurence_after20)[1] > 0){
     SpeciesCount_after20 <- aggregate(SpeciesOccurence_after20$Count, by=list(Category=SpeciesOccurence_after20$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after20[i] = nrow(SpeciesOccurence_after20) #save the number of species for that time frame
     if (nrow(SpeciesOccurence_after20) >= 50){
       ES50_df$ES50_after20[i] = rarefy(SpeciesCount_after20 $x,50) #calculate ES50 after 20 years
     }
-    SpeciesOccurence_after40 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after40[i])
-    SpeciesCount_after40 <- aggregate(SpeciesOccurence_after40$Count, by=list(Category=SpeciesOccurence_after40$scientificName),FUN=sum)
+    }
+    }
+    
+    if (ES50_df$after40[i] < 2022){
+    SpeciesOccurence_after40 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after40[i])
+    if (dim(SpeciesOccurence_after40)[1] > 0){
+      SpeciesCount_after40 <- aggregate(SpeciesOccurence_after40$Count, by=list(Category=SpeciesOccurence_after40$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after40[i] = nrow(SpeciesOccurence_after40) #save the number of species for that time frame
     if (nrow(SpeciesOccurence_after40) >= 50){
       ES50_df$ES50_after40[i] = rarefy(SpeciesCount_after40 $x,50) #calculate ES50 after 40 years
     }
-    SpeciesOccurence_after60 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after60[i])
+    }
+    }
+    
+    if (ES50_df$after60[i] < 2022){
+    SpeciesOccurence_after60 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after60[i])
+    if (dim(SpeciesOccurence_after60)[1] > 0){
     SpeciesCount_after60 <- aggregate(SpeciesOccurence_after60$Count, by=list(Category=SpeciesOccurence_after60$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after60[i] = nrow(SpeciesOccurence_after60) #save the number of species for that time frame
     if (nrow(SpeciesOccurence_after60) >= 50){
       ES50_df$ES50_after60[i] = rarefy(SpeciesCount_after60 $x,50) #calculate ES50 after 60 years
     }
-    SpeciesOccurence_after80 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after80[i])
-    SpeciesCount_after80 <- aggregate(SpeciesOccurence_after80$Count, by=list(Category=SpeciesOccurence_after80$scientificName),FUN=sum)
+    }
+    }
+    
+    if (ES50_df$after80[i] < 2022){
+    SpeciesOccurence_after80 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after80[i])
+    if (dim(SpeciesOccurence_after80)[1] > 0){
+      SpeciesCount_after80 <- aggregate(SpeciesOccurence_after80$Count, by=list(Category=SpeciesOccurence_after80$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after80[i] = nrow(SpeciesOccurence_after80) #save the number of species for that time frame
     if (nrow(SpeciesOccurence_after80) >= 50){
       ES50_df$ES50_after80[i] = rarefy(SpeciesCount_after80 $x,50) #calculate ES50 after 80 years
     }
-    SpeciesOccurence_after100 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after100[i])
-    SpeciesCount_after100 <- aggregate(SpeciesOccurence_after100$Count, by=list(Category=SpeciesOccurence_after100$scientificName),FUN=sum)
+    }
+    }
+    
+    if (ES50_df$after100[i] < 2022){
+    SpeciesOccurence_after100 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after100[i])
+    if (dim(SpeciesOccurence_after100)[1] > 0){
+      SpeciesCount_after100 <- aggregate(SpeciesOccurence_after100$Count, by=list(Category=SpeciesOccurence_after100$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after100[i] = nrow(SpeciesOccurence_after100) #save the number of species for that time frame
     if (nrow(SpeciesOccurence_after100) >= 50){
       ES50_df$ES50_after100[i] = rarefy(SpeciesCount_after100 $x,50) #calculate ES50 after 100 years
     }
-    SpeciesOccurence_after120 = subset(SpeciesOccurence, SpeciesOccurence$year > ES50_df$STATUS_YR[i] & SpeciesOccurence$year < ES50_df$after120[i])
-    SpeciesCount_after120 <- aggregate(SpeciesOccurence_after120$Count, by=list(Category=SpeciesOccurence_after120$scientificName),FUN=sum)
+    }
+    }
+    
+    if (ES50_df$after120[i] < 2022){
+    SpeciesOccurence_after120 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after120[i])
+    if (dim(SpeciesOccurence_after120)[1] > 0){
+      SpeciesCount_after120 <- aggregate(SpeciesOccurence_after120$Count, by=list(Category=SpeciesOccurence_after120$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after120[i] = nrow(SpeciesOccurence_after120) #save the number of species for that time frame
     if (nrow(SpeciesOccurence_after120) >= 50){
       ES50_df$ES50_after120[i] = rarefy(SpeciesCount_after80 $x,50) #calculate ES50 after 120 years
     }
+    }
+    }
+  }
   }
 }
