@@ -102,7 +102,8 @@ ES50_df$Phylum_after120 = NA
 for (i in 1:nrow(ES50_df)){ 
   hull = st_convex_hull(ES50_df$geom[[i]]) #find the convex hull for the polygon
   text = st_as_text(hull) #convert it to text
-  SpeciesOccurence = occurrence(geometry = text) #query OBIS for species within that polygon
+  SpeciesOccurence = try(occurrence(geometry = text)) #query OBIS for species within that polygon
+  if (inherits(SpeciesOccurence, "try-error")) SpeciesOccurence <- NULL
   if (!is_empty(SpeciesOccurence)){ #if there is OBIS data..
   if ("individualCount" %in% colnames(SpeciesOccurence)){ #if individualCount is an available column..
   SpeciesOccurence$individualCount <- suppressWarnings(as.numeric(SpeciesOccurence$individualCount)) #introduces NAs
