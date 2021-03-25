@@ -5,8 +5,11 @@ if ( !("robis" %in% installed) ){
   remotes::install_github("iobis/robis")
 }
 
-#setwd
+#set working directory
 setwd('C:/Users/nposd/Documents/GitHub/ohw20-proj-species-marine-protected-areas/R')
+
+#Set save directory
+saveDir = paste('I:/Shared drives/ohw-obis-mpa/Updates/')
 
 #load libraries
 library(robis)
@@ -27,13 +30,15 @@ library(leaflet)
 library(occ)
 library(spocc)
 library(rapport)
+library(ggplot2)
+library(scales)
 source("wdpar-package.R")
 
 # Run wdpa_read_country function from wdpar-package.R 
-WDPA <- wdpa_read_country(country = 'Cuba', team = "ohw-obis-mpa",
+Country = "Cuba" #country of interest
+WDPA <- wdpa_read_country(country = Country, team = "ohw-obis-mpa",
                           ext = ".gpkg") %>%
-  dplyr::filter(MARINE >= 1) 
-  #dplyr::arrange(describe(REP_AREA)) %>% #organize by largest to smallest
+  dplyr::filter(MARINE >= 1) #only keep marine MPAs
 
 
 #create dataframe to mutate
@@ -55,65 +60,65 @@ ES50_df <- ES50_df %>%
 #convert sf to WKT string
 ES50_df$WKT = st_as_text(ES50_df$geom)
 
-#function for extracting obis dates
-extract_obis_date <- function(x = c("2016-01-02", "2016-01-03T05:06:07", "June 29, 1999")){
-  as.Date(substring(x, 1, nchar("1234-56-78")), format = "%Y-%m-%d")
-}
 
-#preallocate a column for species count and ES50
+#preallocate a column for species count, ES50, and phylum ratio at each timestep
 ES50_df$SpeciesCountALL = NA
 ES50_df$ES50_ALL = NA
+ES50_df$Phylum_ALL = NA
 
 ES50_df$SpeciesCount_prior20 = NA
 ES50_df$ES50_prior20 = NA
+ES50_df$Phylum_prior20 = NA
 
 ES50_df$SpeciesCount_after10 = NA
 ES50_df$ES50_after10 = NA
+ES50_df$Phylum_after10 = NA
 
 ES50_df$SpeciesCount_after20 = NA
 ES50_df$ES50_after20 = NA
+ES50_df$Phylum_after20 = NA
 
 ES50_df$SpeciesCount_after40 = NA
 ES50_df$ES50_after40 = NA
+ES50_df$Phylum_after40 = NA
 
 ES50_df$SpeciesCount_after60 = NA
 ES50_df$ES50_after60 = NA
+ES50_df$Phylum_after60 = NA
 
 ES50_df$SpeciesCount_after80 = NA
 ES50_df$ES50_after80 = NA
+ES50_df$Phylum_after80 = NA
 
 ES50_df$SpeciesCount_after100 = NA
 ES50_df$ES50_after100 = NA
+ES50_df$Phylum_after100 = NA
 
 ES50_df$SpeciesCount_after120 = NA
 ES50_df$ES50_after120 = NA
+ES50_df$Phylum_after120 = NA
 
-
-for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an error
-  hull = st_convex_hull(ES50_df$geom[[i]])
-  text = st_as_text(hull)
-  SpeciesOccurence = occurrence(geometry = text)
-  if (!is_empty(SpeciesOccurence)){
-  if ("individualCount" %in% colnames(SpeciesOccurence)){
-  #convert individual counts from character to numeric
-  SpeciesOccurence$individualCount <- suppressWarnings(as.numeric(SpeciesOccurence$individualCount))
-  SpeciesOccurence$individualCount[is.na(SpeciesOccurence$individualCount)] <- 1 #convert NANs to 1; I'm assuming that if it's listed, there was at least one count, even if it wasn't listed
-  SpeciesOccurence$Count <- 1 * SpeciesOccurence$individualCount
-  #SpeciesOccurence$eventDate = extract_obis_date(SpeciesOccurence$eventDate) #change eventDate from character to date
+#loop through all of the MPAs for the country of interest
+for (i in 1:nrow(ES50_df)){ 
+  hull = st_convex_hull(ES50_df$geom[[i]]) #find the convex hull for the polygon
+  text = st_as_text(hull) #convert it to text
+  SpeciesOccurence = occurrence(geometry = text) #query OBIS for species within that polygon
+  if (!is_empty(SpeciesOccurence)){ #if there is OBIS data..
+  if ("individualCount" %in% colnames(SpeciesOccurence)){ #if individualCount is an available column..
+  SpeciesOccurence$individualCount <- suppressWarnings(as.numeric(SpeciesOccurence$individualCount)) #introduces NAs
+  SpeciesOccurence$individualCount[is.na(SpeciesOccurence$individualCount)] <- 1 #convert NANs to 1; I'm assuming that if it's listed, there was at least one count
+  SpeciesOccurence$Count <- 1 * SpeciesOccurence$individualCount #make a new column for Counts of each species
   } else {
-  SpeciesOccurence$Count = 1
+  SpeciesOccurence$Count = 1 #if individualCount is not a column, I'm assuming that if it's listed there was at least 1 count
   }
-    
-  #calculate the number of unique species
-  SpeciesCount <- aggregate(SpeciesOccurence$Count, by=list(Category=SpeciesOccurence$scientificName),FUN=sum)
-  ES50_df$SpeciesCountALL[i] = nrow(SpeciesCount)
-  if (nrow(SpeciesCount) >= 50){
+  SpeciesCount <- aggregate(SpeciesOccurence$Count, by=list(Category=SpeciesOccurence$scientificName),FUN=sum)#aggregate based on species
+  ES50_df$SpeciesCountALL[i] = nrow(SpeciesCount) #calculate the number of unique species
+  if (nrow(SpeciesCount) >= 50){ #if there are more than 50 species...
     ES50_df$ES50_ALL[i] = rarefy(SpeciesCount$x,50) #calculate ES50 for all records
   }
-  
-  if ("date_year" %in% colnames(SpeciesOccurence)){
-    #Calculate ES50 before and after specified dates
-    SpeciesOccurence_prior20 = subset(SpeciesOccurence, SpeciesOccurence$date_year < ES50_df$STATUS_YR[i])
+  #Calculate ES50 before and after specified dates
+  if ("date_year" %in% colnames(SpeciesOccurence)){ #the column date_year seemed the most consistenly filled out..
+    SpeciesOccurence_prior20 = subset(SpeciesOccurence, SpeciesOccurence$date_year < ES50_df$STATUS_YR[i]) #subset the data for species present 20 years before MPA designation
     if (dim(SpeciesOccurence_prior20)[1] > 0){
     SpeciesCount_prior20 <- aggregate(SpeciesOccurence_prior20$Count, by=list(Category=SpeciesOccurence_prior20$scientificName),FUN=sum)
     ES50_df$SpeciesCount_prior20[i] = nrow(SpeciesOccurence_prior20) #save the number of species for that time frame
@@ -123,7 +128,7 @@ for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
     }
     
     if (ES50_df$after10[i] < 2022){
-    SpeciesOccurence_after10 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after10[i])
+    SpeciesOccurence_after10 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after10[i]) #subset the data for species 10 years after before MPA designation
     if (dim(SpeciesOccurence_after10)[1] > 0){
       SpeciesCount_after10 <- aggregate(SpeciesOccurence_after10$Count, by=list(Category=SpeciesOccurence_after10$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after10[i] = nrow(SpeciesOccurence_after10) #save the number of species for that time frame
@@ -134,7 +139,7 @@ for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
     }
     
     if (ES50_df$after20[i] < 2022){
-    SpeciesOccurence_after20 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after20[i])
+    SpeciesOccurence_after20 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after20[i]) #subset the data for species present 20 years after MPA designation
     if (dim(SpeciesOccurence_after20)[1] > 0){
     SpeciesCount_after20 <- aggregate(SpeciesOccurence_after20$Count, by=list(Category=SpeciesOccurence_after20$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after20[i] = nrow(SpeciesOccurence_after20) #save the number of species for that time frame
@@ -145,7 +150,7 @@ for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
     }
     
     if (ES50_df$after40[i] < 2022){
-    SpeciesOccurence_after40 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after40[i])
+    SpeciesOccurence_after40 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after40[i]) #subset the data for species present 40 years after MPA designation
     if (dim(SpeciesOccurence_after40)[1] > 0){
       SpeciesCount_after40 <- aggregate(SpeciesOccurence_after40$Count, by=list(Category=SpeciesOccurence_after40$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after40[i] = nrow(SpeciesOccurence_after40) #save the number of species for that time frame
@@ -156,7 +161,7 @@ for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
     }
     
     if (ES50_df$after60[i] < 2022){
-    SpeciesOccurence_after60 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after60[i])
+    SpeciesOccurence_after60 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after60[i]) #subset the data for species present 60 years after MPA designation
     if (dim(SpeciesOccurence_after60)[1] > 0){
     SpeciesCount_after60 <- aggregate(SpeciesOccurence_after60$Count, by=list(Category=SpeciesOccurence_after60$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after60[i] = nrow(SpeciesOccurence_after60) #save the number of species for that time frame
@@ -167,7 +172,7 @@ for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
     }
     
     if (ES50_df$after80[i] < 2022){
-    SpeciesOccurence_after80 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after80[i])
+    SpeciesOccurence_after80 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after80[i]) #subset the data for species present 80 years after MPA designation
     if (dim(SpeciesOccurence_after80)[1] > 0){
       SpeciesCount_after80 <- aggregate(SpeciesOccurence_after80$Count, by=list(Category=SpeciesOccurence_after80$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after80[i] = nrow(SpeciesOccurence_after80) #save the number of species for that time frame
@@ -178,7 +183,7 @@ for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
     }
     
     if (ES50_df$after100[i] < 2022){
-    SpeciesOccurence_after100 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after100[i])
+    SpeciesOccurence_after100 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after100[i]) #subset the data for species present 100 years after MPA designation
     if (dim(SpeciesOccurence_after100)[1] > 0){
       SpeciesCount_after100 <- aggregate(SpeciesOccurence_after100$Count, by=list(Category=SpeciesOccurence_after100$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after100[i] = nrow(SpeciesOccurence_after100) #save the number of species for that time frame
@@ -189,7 +194,7 @@ for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
     }
     
     if (ES50_df$after120[i] < 2022){
-    SpeciesOccurence_after120 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after120[i])
+    SpeciesOccurence_after120 = subset(SpeciesOccurence, SpeciesOccurence$date_year > ES50_df$STATUS_YR[i] & SpeciesOccurence$date_year < ES50_df$after120[i]) #subset the data for species present 120 years after MPA designation
     if (dim(SpeciesOccurence_after120)[1] > 0){
       SpeciesCount_after120 <- aggregate(SpeciesOccurence_after120$Count, by=list(Category=SpeciesOccurence_after120$scientificName),FUN=sum)
     ES50_df$SpeciesCount_after120[i] = nrow(SpeciesOccurence_after120) #save the number of species for that time frame
@@ -201,3 +206,6 @@ for (i in 1:nrow(ES50_df)){ #I have to figure out why the first MPA is giving an
   }
   }
 }
+
+#save data frame
+write.csv(ES50_df,paste(saveDir,Country,'_ES50_df.csv', sep=""))
