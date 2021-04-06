@@ -1,0 +1,51 @@
+---
+title: "MPA data scratch"
+output: html_notebook
+---
+
+Some basic plots of the MPA data.
+
+```{r}
+library("scales")
+library("plotrix")
+data <- read.csv('./WDPA_WDOECM_marine_csv.csv')
+```
+
+```{r}
+plot(data$STATUS_YR[data$STATUS_YR>0],
+     log10(data$REP_AREA[data$STATUS_YR>0]),
+     pch = 16,
+     cex = 2,
+     xlab = '',
+     ylab = 'Log area',
+     col=alpha(4,.1))
+#colramp = colorRampPalette(c('white', 'gray','blue', 'green', 'yellow','orange', 'red','purple','gray','black'))
+#x1 <- data$STATUS_YR[data$STATUS_YR>0]
+#x2 <- log10(data$REP_AREA[data$STATUS_YR>0])
+#smoothScatter(x1, x2, colramp=colramp)
+```
+Plot of all MPAs through time. Points are darkened with density.
+
+
+```{r}
+hist(data$STATUS_YR[data$STATUS_YR>0], 
+     col = "lightblue",
+     breaks = 1880:2020,
+     xlab='',
+     ylab='Number of MPAs',
+     main='')
+```
+
+Number of MPAs initiated by year, based on "status year".
+
+
+```{r}
+weighted.hist(data$STATUS_YR[data$STATUS_YR>0],
+              data$REP_AREA[data$STATUS_YR>0],
+              breaks = 1880:2020,
+              col = 'gray',
+              xlab='',
+              ylab='MPA area')
+```
+Total area of MPAs established each year, based on "status year" and "REP_AREA".
+
