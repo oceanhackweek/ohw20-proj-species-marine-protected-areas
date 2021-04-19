@@ -78,6 +78,37 @@ wdpa_read_country <- function(country = 'Cuba',
   return(x)
 }
 
+#' Read a previously downloaded WDPA global dataset from a geodatabase. 
+#' iThe database has 16991 unique WPDA_ID 
+#' 
+#' NOTE: this is a direct read from a mounted Google Drive to the ohw-obis-mpa 
+#' project directory. IT's a very large database (not huge, but big) and reading 
+#' indirectly via http to Google Drive is waaay too slow.  If the data has not been 
+#' synced to your local drive the first read maybe slowish.
+#' 
+#' @param path character, path to the Google Drive ohw-obis-mpa directory
+#' @param name character, the name of the database
+#' @param ext character, the file extension, by default we look for ".gdb"
+#' @return a simple features table
+#' @examples
+#' \dontrun{
+#' x <- wdpa_read_global(path = "~/Google Drive/Shared drives/ohw-obis-mpa")
+#' y <- x %>% dplyr::filter(ISO3 == "MEX") %>% dplyr::slice_max(REP_M_AREA, n = 10)
+#' plot(y['STATUS_YR'])
+#' }
+wdpa_read_global <- function(path = "~/Google Drive/Shared drives/ohw-obis-mpa",
+                             name = "WDPA_WDOECM_Apr2021_Public_marine",
+                             ext = ".gdb"){
+  
+  if (!dir.exists(path[1])) stop("path not found:", path[1])
+  dbpath <- file.path(path, "Data", "wdpa", "global", 
+                        name[1],
+                        sprintf("%s%s", name[1], ext[1]))
+  if (!dir.exists(dbpath)) stop("database path not found:", dbpath)
+  x <- suppressWarnings(sf::read_sf(dbpath))
+  return(x)
+}
+
 
 
 #' Generate a sf object of random points within and around a set of polygons.
