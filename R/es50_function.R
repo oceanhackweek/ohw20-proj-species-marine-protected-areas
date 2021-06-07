@@ -16,18 +16,19 @@ calculate_es50 <- function(mpa, key, ages) {
   
   # need to add argument to either calculate cumulatively or binned for each age
   # using ages 20 and 40 for example, calculate es50 from 0-20, 20-40; or 0-20, 0-40
-  es50 <- function(age, mpa) {
+  es50 <- function(mpa, age) {
     
     if (mpa$STATUS_YR + age > 2021) {
       return(NA)
     } 
     
-    #filter occurence records for bin calculation
+    #filter occurrence records for bin calculation
     if (age == 0) {
       age_year <- mpa$STATUS_YR + 9
       
       age_records <- species_occurence %>% 
         dplyr::filter(dplyr::between(.data$date_year, mpa$STATUS_YR, age_year))
+      
     } else {
       bin_start <- mpa$STATUS_YR + age
       
@@ -41,25 +42,32 @@ calculate_es50 <- function(mpa, key, ages) {
     if (nrow(age_records) > 0) {
       species_counts <- aggregate(age_records$Count, by=list(Category=age_records$scientificName), FUN=sum)
       
-      species_count_20 <- nrow(species_counts)
+      #can be used to store the number of unique species
+      species_count <- nrow(species_counts)
       
-      if (nrow(age_records) >= 50) {
+      if (nrow(species_counts) >= 50) {
         es_50 <- vegan::rarefy(species_counts$x, 50)
         
-        return(es_50)
+        mpa <- mpa %>% 
+          dplyr::mutate("age_{age}" := es_50, .before=.data$geom)
+        
+        return(mpa)
       }
       else {
-        return(NA)
+        mpa <- mpa %>% 
+          dplyr::mutate("age_{age}" := NA, .before=.data$geom)
       }
+    } else {
+      mpa <- mpa %>% 
+        dplyr::mutate("age_{age}" := NA, .before=.data$geom)
     }
-    
   }
   
-  hull = st_convex_hull(mpa$geom)
-  text = st_as_text(hull)
+  #hull = st_convex_hull(mpa$geom)
+  #text = st_as_text(hull)
   
   #added distinct() to check for duplicates
-  species_occurence = try(occurrence(geometry = text))
+  species_occurence = try(occurrence(geometry = st_as_text(st_convex_hull(mpa$geom))))
   
   if (inherits(species_occurence, "try-error")) {
     species_occurence <- NULL
@@ -68,7 +76,7 @@ calculate_es50 <- function(mpa, key, ages) {
   
   if (!is_empty(species_occurence)) {
     if ("individualCount" %in% colnames(species_occurence)) {
-      
+  
       species_occurence$individualCount <- as.numeric(species_occurence$individualCount)
       species_occurence$individualCount[is.na(species_occurence$individualCount)] <- 1
       species_occurence$Count <- 1 * species_occurence$individualCount
@@ -90,20 +98,26 @@ calculate_es50 <- function(mpa, key, ages) {
     }
     
     if ("date_year" %in% colnames(species_occurence)) {
+
+      #es50_by_age <- sapply(ages, es50, mpa)
+      #
+      #mpa <- mpa %>% 
+      #  dplyr::mutate(age_0     = es50_by_age[1],
+      #                age_10    = es50_by_age[2],
+      #                age_20    = es50_by_age[3],
+      #                age_30    = es50_by_age[4],
+      #                age_40    = es50_by_age[5],
+      #                age_50    = es50_by_age[6],
+      #                age_60    = es50_by_age[7],
+      #                .before=geom)
       
-      es50_by_age <- sapply(ages, es50, mpa)
-      
-      mpa <- mpa %>% 
-        dplyr::mutate(age_0     = es50_by_age[1],
-                      age_10    = es50_by_age[2],
-                      age_20    = es50_by_age[3],
-                      age_30    = es50_by_age[4],
-                      age_40    = es50_by_age[5],
-                      age_50    = es50_by_age[6],
-                      age_60    = es50_by_age[7],
-                      .before=geom)
+      for (age in ages) {
+        mpa <- mpa %>% 
+          es50(age)
+      }
     }
   }
+  
   return(mpa)
 }
 
@@ -118,7 +132,9 @@ ages <- c(0, 10, 20, 30, 40, 50, 60)
 WDPA <- wdpa_read_country(country, team = "ohw-obis-mpa", ext = ".gpkg") %>%
   dplyr::filter(MARINE > 0)
 
-x <- WDPA %>% 
+wdpa <- head(WDPA, n=4)
+
+x <- wdpa %>% 
   dplyr::select(WDPAID, 
                 NAME, 
                 IUCN_CAT,
@@ -129,10 +145,8 @@ x <- WDPA %>%
                 geom) %>% 
   dplyr::mutate(WKT = st_as_text(geom)) %>% 
   dplyr::group_by(WDPAID) %>% 
-  dplyr::group_map(calculate_es50, ages, .keep=TRUE) #%>% 
+  dplyr::group_map(calculate_es50, ages, .keep=TRUE) %>% 
   dplyr::bind_rows()
-
-
 
 
 
