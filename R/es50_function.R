@@ -15,7 +15,6 @@ calculate_es50 <- function(mpa,
                            ages) {
   
   # need to add argument to either calculate cumulatively or binned for each age
-  # using ages 20 and 40 for example, calculate es50 from 0-20, 20-40; or 0-20, 0-40
   es50 <- function(mpa, age) {
     
     if (mpa$STATUS_YR + age > 2021) {
@@ -86,10 +85,6 @@ calculate_es50 <- function(mpa,
     return(mpa)
   }
   
-  #hull = st_convex_hull(mpa$geom)
-  #text = st_as_text(hull)
-  
-  #added distinct() to check for duplicates
   species_occurence = try(occurrence(geometry = st_as_text(st_convex_hull(mpa$geom))))
   
   cat("\n")
@@ -147,8 +142,8 @@ calculate_es50 <- function(mpa,
     
     mpa <- mpa %>% 
       dplyr::mutate(species_count_before = nrow(species_count_before),
-                    phylum_count_before = nrow(phylum_count_before),
-                    records_before = n_records_before,
+                    phylum_count_before  = nrow(phylum_count_before),
+                    records_before       = n_records_before,
                     .before=.data$geom)
     
     if (nrow(species_count_before) >= 50) {
@@ -174,8 +169,8 @@ calculate_es50 <- function(mpa,
     
     mpa <- mpa %>% 
       dplyr::mutate(species_count_after = nrow(species_count_after),
-                    phylum_count_after = nrow(phylum_count_after),
-                    records_after = n_records_after,
+                    phylum_count_after  = nrow(phylum_count_after),
+                    records_after       = n_records_after,
                     .before=.data$geom)
     
     if (nrow(species_count_after) >= 50) {
@@ -211,7 +206,7 @@ ages <- c(-40, -20, 0, 20, 40, 60, 80)
 WDPA <- wdpa_read_country(country, team = "ohw-obis-mpa", ext = ".gpkg") %>%
   dplyr::filter(MARINE > 0)
 
-wdpa <- head(WDPA, n=4)
+wdpa <- head(WDPA, n=8)
 
 x <- wdpa %>% 
   dplyr::select(WDPAID, 
@@ -222,13 +217,15 @@ x <- wdpa %>%
                 STATUS, 
                 STATUS_YR, 
                 geom) %>% 
+ # dplyr::filter(sapply(.data$geom, function(x) class(x)[2]) == "MULTIPOLYGON") %>% 
+  dplyr::filter(sapply(.data$geom, function(x) inherits(x, "MULTIPOLYGON"))) %>% 
   dplyr::group_by(WDPAID) %>% 
   dplyr::group_map(calculate_es50, ages, .keep=TRUE) %>% 
   dplyr::bind_rows()
 
 
-mpa <- WDPA %>% 
-  dplyr::filter(WDPAID == 342) %>% 
+mpa <- wdpa %>% 
+  dplyr::filter(WDPAID == 95312) %>% 
   dplyr::select(WDPAID, 
                 NAME, 
                 IUCN_CAT,
@@ -237,3 +234,4 @@ mpa <- WDPA %>%
                 STATUS, 
                 STATUS_YR, 
                 geom)
+
