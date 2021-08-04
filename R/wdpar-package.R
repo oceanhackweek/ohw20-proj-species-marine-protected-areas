@@ -9,7 +9,7 @@
 
 # but we do need these
 source("google-filestream.R")
-library(wdpar)
+require(wdpar)
 
 # note table of accepted countries
 # https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3#Officially_assigned_code_elements
@@ -101,13 +101,13 @@ wdpa_read_country <- function(country = 'Cuba',
 #' }
 wdpa_read_global <- function(path = "~/Google Drive/Shared drives/ohw-obis-mpa",
                              name = "WDPA_WDOECM_Apr2021_Public_marine",
-                             ext = ".gdb",
                              filestream = FALSE,
-                             team = "ohw-obis-mpa",){
+                             ext = ifelse(filestream, ".gpkg", ".gdb"),
+                             team = "ohw-obis-mpa"){
   
   
   if (filestream){
-    filename <- "WDPA_WDOECM_Apr2021_Public_marine.gdb"
+    filename <- sprintf("%s.%s", name[1], ext[1])
     x <- gd_read_sf(filename, team = team)
   } else {
     
