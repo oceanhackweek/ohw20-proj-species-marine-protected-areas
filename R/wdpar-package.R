@@ -41,6 +41,7 @@ wdpa_fetch_country <- function(country = 'Chile',
 #' @param x a simple features table
 #' @param country character, name of the country to write
 #' @param path character, the path to save to dataset
+#' @param team character, the name of the Google team
 #' @param ext, character, the file extension, by default we write Geopackage, "*.gpkg"
 #' @param overwrite logical, if TRUE allow existing fiels to overwrite
 #' @return the input table
@@ -89,6 +90,8 @@ wdpa_read_country <- function(country = 'Cuba',
 #' @param path character, path to the Google Drive ohw-obis-mpa directory
 #' @param name character, the name of the database
 #' @param ext character, the file extension, by default we look for ".gdb"
+#' @param filestream logical if TRUE then use googlefilestream
+#' @param team character, the name of the Google team
 #' @return a simple features table
 #' @examples
 #' \dontrun{
@@ -98,15 +101,24 @@ wdpa_read_country <- function(country = 'Cuba',
 #' }
 wdpa_read_global <- function(path = "~/Google Drive/Shared drives/ohw-obis-mpa",
                              name = "WDPA_WDOECM_Apr2021_Public_marine",
-                             ext = ".gdb"){
+                             ext = ".gdb",
+                             filestream = FALSE,
+                             team = "ohw-obis-mpa",){
   
-  if (!dir.exists(path[1])) stop("path not found:", path[1])
-  dbpath <- file.path(path, "Data", "wdpa", "global", 
-                        name[1],
-                        sprintf("%s%s", name[1], ext[1]))
-  if (!dir.exists(dbpath)) stop("database path not found:", dbpath)
-  x <- suppressWarnings(sf::read_sf(dbpath))
-  return(x)
+  
+  if (filestream){
+    filename <- "WDPA_WDOECM_Apr2021_Public_marine.gdb"
+    x <- gd_read_sf(filename, team = team)
+  } else {
+    
+    if (!dir.exists(path[1])) stop("path not found:", path[1])
+    dbpath <- file.path(path, "Data", "wdpa", "global", 
+                          name[1],
+                          sprintf("%s%s", name[1], ext[1]))
+    if (!dir.exists(dbpath)) stop("database path not found:", dbpath)
+    x <- suppressWarnings(sf::read_sf(dbpath))
+    return(x)
+  }
 }
 
 
