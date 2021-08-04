@@ -1,0 +1,184 @@
+---
+title: "ERDDAPPolygons"
+author: "Tasha Gownaris"
+date: "8/4/2021"
+output: html_notebook
+---
+
+# Example ERDDAP Code from Tasha's Mar Eco Class 
+The RNotebook below is one of the notebooks I created for my marine ecology students. Not sure how helpful it will be but just wanted practice working within my forked repo.
+
+
+\  
+
+**Installing Packages**
+```{r}
+
+#For installing packages, you can use "c" (concatenate) to say "let's install a bunch of stuff at once".
+install.packages(c("ncdf4", "rerddap", "plotdap","rerddapXtracto", "parsedate", "sp", "ggplot2", "reshape2", "maps", "mapdata", "tidyverse", "lubridate", "cmocean", "graphics", "png", "rgdal", "sf"))
+
+```
+
+\  
+
+**Loading Packages**
+```{r}
+
+library("ncdf4")
+library("rerddap")
+library("plotdap")
+library("rerddapXtracto")
+library("parsedate")
+library("sp")
+library("ggplot2")
+library("reshape2")
+library("maps")
+library("mapdata")
+library("tidyverse")
+library("lubridate")
+library("cmocean")
+library("graphics")
+library("png")
+library("rgdal")
+library("sf")
+
+```
+
+\  
+
+**Loading and Wrangling our Polygon Data**
+```{r}
+
+mpa_polygon <- st_read("WDPA_WDOECM_Mar2021_Public_191_shp/WDPA_WDOECM_Mar2021_Public_191_shp_0/WDPA_WDOECM_Mar2021_Public_191_shp-polygons.shp")
+
+#let's get some information on our shapefile
+view(mpa_polygon)
+#We can see that this MPA was inscribed in 1978, and we don't know much about whether fishing is allowed or not (the no-take status). Later in the class, we will talk more about MPAs and what the various columns in this database mean.
+
+#The "geometry" part of the dataset tells us about the extremes of the polygon. We will need these later, for now let's just note them.
+mpa_polygon$geometry
+#The lat extremes = -92.68288, -88.57545 and lon extremes = -2.07455, 2.34966
+
+#This information will be useful for setting boundaries for plotting, but what we really would like to do is pull the data within the MPA itself. To do this, we have to first pull the point data that define the boundary of the MPA.
+mpa_boundary = data.frame(st_coordinates(mpa_polygon))
+
+#The code above gives us two extra columns. We will get rid of those and rename our columns for easier use later. That's what we'll do here.
+mpa_boundary = 
+  mpa_boundary %>%
+  select(X, Y) %>%
+  rename(lon = X, lat = Y)
+
+```
+
+\  
+
+**Melting Function**
+I'm sure there's a more elegant way to wrangle these data, but this was my approach to make it tidyverse-able.
+```{r}
+Melt_SpatialData <- function(DataOutput, parameter) { #when you use this function, you have to tell R what the dataoutput you want to use is and what the parameter you want to use it
+  latl <- length(DataOutput$latitude)
+  longl <- length(DataOutput$longitude)
+  tl <- length(DataOutput$time)
+  OutputTidy <- melt(DataOutput)
+  OutputTidy$long <- "NA"
+  OutputTidy$lat <- "NA"
+  #there are some extra numbers in the end because of how data are melted -- length of b should be cut off at length of lat * length of long * length of date
+  totall <- latl*longl * tl
+  OutputTidy <- OutputTidy[1:totall,]
+  #have to base these numbers on length of lat, length of long, length of date
+  #long repeats entire vector at length of lat * length of date
+  #lat repeats each number within vector at length of long
+  #date repeats each date within vector at length of lat * length of long
+  OutputTidy$long <- rep(DataOutput$longitude, latl*tl) #long is laid out 1, 2, 3, 1, 2, 3 so don't need each 
+  OutputTidy$lat <- rep(DataOutput$latitude, each = longl) #lat is laid out 1,1,1,,2,2,2 so need each 
+  OutputTidy$time <- rep(DataOutput$time, each = latl * longl)
+  OutputTidy[[parameter]] <- OutputTidy$value
+  return(OutputTidy[,6:9]) #this is getting rid of the unnamed columns for a tidy output
+}
+```
+
+\  
+
+**Defining Our Data Boundaries**
+Here, we will define our parameters as we did last week, except this time we will use the MPA boundaries to define our latitude and longitude boundaries. You can do this with any polygon data once you pull the boundaries using st_coordinates! [these are notes for my students but provide context]
+```{r}
+
+sst_info = rerddap::info('NOAA_DHW_monthly') #This is telling R which dataset we want to use - this time we are going to look at SST anomaly data aggregated at the monthly level. The nice this is that this dataset exists since 1985.
+
+print(sst_info) #print just means "show me this thing below"
+
+xcoord <- mpa_boundary$lon #unlike last week, our longitude here is based solely on the boundaries of our MPA
+ycoord <- mpa_boundary$lat #similarly, our latitude here is based solely on the boundaries of our MPA
+date <- c("1986-01-01", "2019-12-31") #we are going to look at a long range of data here, note Year-Month-Day format and use of quotation marks
+#zcoord <- 0 #note- there is sometimes altitude or depth in your dataset. If so, you have to include a "z" parameter. Just set this to 0 for the ocean surface. 
+parameter <- "sea_surface_temperature" #Some datasets have multiple parameters, so you have to note which you want to use. Look closely at the info you pull on the database you are using (here, sst_info). In class, we are going to focus on the sea surface temperature data. For homework, you will examine the anomaly data for your system. 
+
+```
+
+\ 
+
+**Pulling the Oceanographic Data from the Database**
+Note that we are pulling data from within a polygon here, so we are using rxtractogon rather than what we used last week (rxtracto_3D) which extracts data at pre-defined points or at any points within a square. Here, we are extracting data within a particular shape/polygon of interest so we use rxtractogon.[these are notes for my students but provide context]
+```{r}
+#Remember, we are pulling years worth of data for every point within this polgyon, so this might take a minute
+sst_galapagos <- rxtractogon(sst_info, parameter = parameter, xcoord = xcoord, ycoord = ycoord, tcoord = date)
+
+#This is where we use the scary function. Important: you will have to change your parameter for your homework, when you will be looking at the anomaly data. 
+sst_galapagos_tidy = Melt_SpatialData(DataOutput = sst_galapagos, parameter = "sea_surface_temperature")
+
+```
+
+\  
+
+**Exploring, Wrangling, and Summarizing Our Data**
+Here, we are going to pull just two months of data for our dataset (November and December) and look at the average temperature within those two months across years. We will go through this code line by line - make sure to take notes! Note - for your homework, you will be asked to look across all months, so you won't want to filter out only November and December. Here and below, make sure to change the name of your parameter since you will be changing your parameter for your homework. [these are notes for my students but provide context]
+```{r}
+
+sst_galapagos_tidy_annualsummary = 
+  sst_galapagos_tidy %>%
+  filter(!is.na(sea_surface_temperature)) %>%
+  mutate(year = year(time)) %>%
+  group_by(year) %>%
+  filter(month(time) %in% c("11", "12")) %>%
+  mutate(sea_surface_temperature = as.numeric(sea_surface_temperature)) %>%
+  summarize(n = length(sea_surface_temperature), mean_SST = mean(sea_surface_temperature))
+
+sst_galapagos_tidy_annualsummary %>%
+  ggplot(aes(x = year, y = mean_SST)) + geom_point()
+
+```
+
+\  
+
+**Basic Plot**
+Here, we are going to create a similar plot to last week, looking at two of the extreme years. For this, we are going to use just one month's worth of data (December).
+```{r}
+
+sst_galapagos_tidy %>%
+  filter(!is.na(sea_surface_temperature)) %>%
+  filter(month(time) == "12" & (year(time) == "1996" | year(time) == "1997")) %>%
+  ggplot() + 
+  geom_raster(aes(x = long, y = lat, fill = as.numeric(sea_surface_temperature))) +
+  facet_wrap(~year(time))  
+
+```
+
+\  
+
+**Plot with Land Polygons**
+The above figure gives as a great idea of the SST in the region, but it's often hard to have the context of the region without also displaying information on the land masses. We will use the WorldHires World Map which gives us national boundaries and coastlines. We will set the x and y limits of this region based on the extreme points of our MPA polygon, which we made note of at the very beginning of this exercise. We will also set the coordinate limits in our ggplot function.[note that I have historically done all of my spatial analyses and mapping in GIS, so I am still learning in R and none of this is pretty/perfect!]
+```{r}
+xlim = c(-92.68288, -88.57545)
+ylim = c(-2.07455, 2.34966)
+land <- map_data("worldHires", ylim = ylim, xlim = xlim) #pulling data within our MPA region
+
+sst_galapagos_tidy %>%
+  filter(!is.na(sea_surface_temperature)) %>%
+  filter(month(time) == "12" & (year(time) == "1996" | year(time) == "1997")) %>%
+  ggplot() + 
+  geom_raster(aes(x = long, y = lat, fill = as.numeric(sea_surface_temperature))) +
+  geom_polygon(data = land, aes(x=long, y = lat, group = group), color = "black", fill = "goldenrod") + 
+  coord_fixed(xlim = xlim, ylim = ylim) + facet_wrap(~year(time))   
+
+#Does anyone know why the temperatures vary so much from one year to the next?
+```
