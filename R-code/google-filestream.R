@@ -80,7 +80,7 @@ gd_write_sf <- function(x, filename = "test.gpkg",
 #' @param ... other arguments for \code{\link[readr]{read_csv}}
 #' @return table (tibble)
 gd_read_csv <- function(filename = "WDPA_WDOECM_marine_csv.csv", team = "ohw-obis-mpa", ...){
-  x <- googledrive::drive_find(filename, team_drive = team) %>%
+  x <- googledrive::drive_find(filename, shared_drive = team) %>%
     drive_read(read_fun = readr::read_csv, ...)
   return(x)
 }
@@ -92,6 +92,7 @@ gd_read_csv <- function(filename = "WDPA_WDOECM_marine_csv.csv", team = "ohw-obi
 #' @param path dribble destination online directory description as per \code{\link[googledrive](drive_get)}
 #' @param overwrite logical, by default it is an error to overwrite
 #' @param ... other other arguments for \code{\link[readr]{write_csv}}
+#' @return the inut data frame
 gd_write_csv <- function(x, filename = "test.csv",  
                         path = googledrive::drive_get("Data", team = "ohw-obis-mpa"),
                         overwrite = FALSE,
