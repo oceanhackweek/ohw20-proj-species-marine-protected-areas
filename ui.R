@@ -8,18 +8,24 @@ names(countries) <- countries
 ui <- navbarPage(title = "Nav: ",
                  tabPanel("Map",
                           fluidRow(
-                              column(8, leafletOutput("mymap")),
+                              column(8, leafletOutput("ui_mymap")),
                               column(4, "Highlighted MPAs",
                                      fluidRow(uiOutput("mpa_highlight")),
                                      # need to stop the first column from being cut off
                                      div(style="width:400px;overflow-x: scroll;height:400px;overflow-y: scroll;",
                                          fluidRow(tableOutput("mpa_highlight_table")))
                               )
+                              )
                           ),
                           fluidRow(
-                              column(4, selectInput(inputId = "country_selection", label ="Country selection:", choices=countries)),
-                              column(2, actionButton("update_country", "Update"))
-                          ),
+                              column(4, 
+                                     fluidRow(selectInput(inputId = "country_selection", label ="Country selection:", choices=countries)),
+                                     fluidRow(uiOutput("ui_filter_mpas"))
+                                     ),
+                              column(2, 
+                                     fluidRow(actionButton(inputId="update_country", "Update country")),
+                                     fluidRow(uiOutput("ui_update_filter"))
+                                     ),
                  ),
                  tabPanel("OBIS options",
                           sidebarLayout(
