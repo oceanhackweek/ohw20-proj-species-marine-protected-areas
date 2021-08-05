@@ -30,5 +30,15 @@ x <- sf::read_sf("~/data/WDPA_WDOECM_Apr2021_Public_marine.gpkg") %>%
 
 ```{r obis}
 
-bel_spoc <- robis::occurrence(geometry = sf::st_as_text(sf::st_convex_hull(sf::st_geometry(x))), verbose = TRUE)
+# gets the occurrence data for a single multipolygon (one row of WDPA table)
+get_one_mpa <- function(x, key){
+   robis::occurrence(geometry = sf::st_as_text(sf::st_convex_hull(sf::st_geometry(x))))
+}
+
+bel_spoc <- x %>%
+  dplyr::rowwise() %>%
+  dplyr::group_map(get_one_mpa,
+                   .keep = TRUE) %>%
+  dplyr::bind_rows()
+   
 ```
