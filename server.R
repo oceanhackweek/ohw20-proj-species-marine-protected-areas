@@ -45,7 +45,7 @@ server <- function(input, output) {
         yr.max <- max(country()$STATUS_YR)
         tagList(
 
-            sliderInput(inputId = "status_yr_range", label="Year", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max)),
+            sliderInput(inputId = "status_yr_range", label="Year", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max), sep = ""),
             checkboxGroupInput(inputId="iucn_cat", label="IUCN Categories", choices=unique(country()$IUCN_CAT[order(match(country()$IUCN_CAT, c("Ia","Ib","II","III","IV","V","VI","Not Applicable","Not Assigned","Not Reported")))]))
 
         )
@@ -69,7 +69,7 @@ server <- function(input, output) {
     # Subset country data to IUCN category selection
     iucn <- reactive({
         country() %>% 
-            filter(., IUCN_CAT %in% input$iucn_cat)
+            filter(., IUCN_CAT %in% input$iucn_cat & STATUS_YR >= min(input$status_yr_range) & STATUS_YR <= max(input$status_yr_range))
     }) %>% bindEvent(input$update_filter)
     
     # Incremental changes to the map: re-render map based on iucn selection
