@@ -1,0 +1,34 @@
+---
+title: "obis_mpa_belgium"
+output: github_document
+---
+
+```{r setup, include=FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sf)
+library(dplyr)
+library(robis)
+source("R-code/wdpar-package.R")
+
+# robis::occurrence() expect filtering polygons in a well-known-text represerntation (aka WKT)
+extract_polygon_geometry <- function(polygon) {
+  polygon %>%
+    sf::st_geometry() %>%
+    sf::st_as_text()
+}
+
+```
+
+## Global WDPA dataset flitered to Belgium
+
+```{r wpda}
+x <- sf::read_sf("~/data/WDPA_WDOECM_Apr2021_Public_marine.gpkg") %>%
+  dplyr::filter(ISO3 %in% "BEL")
+```
+
+## Extract occurence data from OBIS
+
+```{r obis}
+
+bel_spoc <- robis::occurrence(geometry = sf::st_as_text(sf::st_convex_hull(sf::st_geometry(x))), verbose = TRUE)
+```
