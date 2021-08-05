@@ -44,7 +44,7 @@ server <- function(input, output) {
         yr.min <- min(country()$STATUS_YR)
         yr.max <- max(country()$STATUS_YR)
         tagList(
-            sliderInput(inputId = "status_yr_range", label="Year", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max)),
+            sliderInput(inputId = "status_yr_range", label="Year", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max), sep = ""),
             checkboxGroupInput(inputId="iucn_cat", label="IUCN Categories", choices=unique(country()$IUCN_CAT))
         )
     })
