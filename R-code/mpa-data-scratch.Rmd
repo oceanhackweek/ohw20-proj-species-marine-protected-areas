@@ -48,4 +48,3 @@ weighted.hist(data$STATUS_YR[data$STATUS_YR>0],
               ylab='MPA area')
 ```
 Total area of MPAs established each year, based on "status year" and "REP_AREA".
-
