@@ -38,14 +38,14 @@ server <- function(input, output) {
     
     # trying to fine a way to cache the country wdpas 
     # %>% bindCache(input$country_selection) %>% bindEvent(input$update_country)
-    
+
     output$ui_filter_mpas <- renderUI({
         req(input$update_country)
         yr.min <- min(country()$STATUS_YR)
         yr.max <- max(country()$STATUS_YR)
         tagList(
             sliderInput(inputId = "status_yr_range", label="Year", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max)),
-            checkboxGroupInput(inputId="iucn_cat", label="IUCN Categories", choices=unique(country()$IUCN_CAT))
+            checkboxGroupInput(inputId="iucn_cat", label="IUCN Categories", choices=unique(country()$IUCN_CAT[order(match(country()$IUCN_CAT, c("Ia","Ib","II","III","IV","V","VI","Not Applicable","Not Assigned","Not Reported")))]))
         )
     })
     
