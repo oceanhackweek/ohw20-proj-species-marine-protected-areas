@@ -43,7 +43,7 @@ drive_read <- function (x, path = NULL, read_fun, ...){
 #' @param ... other arguments for \code{\link[sf]{read_sf}}
 #' @return simple features table (tibble)
 gd_read_sf <- function(filename = "CovariantExample.gpkg", team = "ohw-obis-mpa", ...){
-  x <- googledrive::drive_find(filename, team_drive = team) %>%
+  x <- googledrive::drive_find(filename, shared_drive = team) %>%
     drive_read(read_fun = sf::read_sf, ...)
   return(x)
 }

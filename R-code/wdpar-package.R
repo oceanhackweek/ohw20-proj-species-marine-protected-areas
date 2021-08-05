@@ -107,7 +107,7 @@ wdpa_read_global <- function(path = "~/Google Drive/Shared drives/ohw-obis-mpa",
   
   
   if (filestream){
-    filename <- sprintf("%s.%s", name[1], ext[1])
+    filename <- sprintf("%s%s", name[1], ext[1])
     x <- gd_read_sf(filename, team = team)
   } else {
     
