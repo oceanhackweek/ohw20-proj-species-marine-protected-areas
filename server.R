@@ -44,11 +44,25 @@ server <- function(input, output) {
     })
     observeEvent(input$mymap_shape_click, {
         click <- input$mymap_shape_click
-        mpas <- country()[mpa_match(country(), st_point(c(click$lng, click$lat)))[[1]],]
-        leafletProxy("mymap") %>% 
-            addPopups(data=match, lng=click$lng, lat=click$lat, popup=~sprintf("%s", NAME)) #kind of works but popups are overlapping, unfortunately popups require input that simplifies into a string, and I'm not interested in wrting long HTML code
+        mpas <- mpa_match(country(), st_point(c(click$lng, click$lat)))[[1]] # get row numbers of MPAs selected
+        mpas <- country()[mpas,] # extract MPAs
+        leafletProxy("mymap") %>%
+            addPopups(data=mpas, lng=click$lng, lat=click$lat, popup=~sprintf("%s records found", nrow(mpas)))
         # next step is to instead of having the info on the popup, have the info for each clicked mpa on a sidebar to the right
+        output$mpa_highlight <- renderUI(
+            selectInput(inputId = "mpa_select", label="MPA:", choices=mpas$WDPAID)
+        )
+        # need to make this vertical
+        output$mpa_highlight_table <- renderTable({
+            req(input$mpa_select)
+            df<-filter(mpas, WDPAID==input$mpa_select) %>% as_tibble() %>% select(-geom) %>% t() %>% as.data.frame() %>% tibble::rownames_to_column()
+            print(dim(df))
+            df
+        },
+        colnames=FALSE, spacing = "xs", width="100%", align="l")
     })
+    
+
 
     
 }
