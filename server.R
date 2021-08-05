@@ -64,20 +64,20 @@ server <- function(input, output) {
 
     })
     
-    #subset country data to IUCN category selection
+    # Subset country data to IUCN category selection
     iucn <- reactive({
         country() %>% 
-            filter(., IUCN_CAT == input$iucn_cat)
+            filter(., IUCN_CAT %in% input$iucn_cat)
     }) %>% bindEvent(input$update_filter)
     
-    # render map based on iucn selection, currently overwriting the original map. Need to fix this so the original (country selection map still works)
-    output$ui_mymap <- renderLeaflet({
-        # render the base leaflet map
-        leafletplot <- leaflet() %>% addProviderTiles(providers$Stamen.Watercolor, options = providerTileOptions(noWrap = TRUE))
-        if(is(country())[1]=="sf")# what to put here to only run the following code if a WDPA has been loaded into country? and else render a regular map?
-            leafletplot <- leafletplot %>% addPolygons(data=iucn())
-
+    # Incremental changes to the map: re-render map based on iucn selection
+    observe({
+        leafletProxy("ui_mymap", data = iucn()) %>%
+            clearShapes() %>% 
+            addPolygons()
+            
     })
+    
     
     observeEvent(input$ui_mymap_shape_click, {
         click <- input$ui_mymap_shape_click
