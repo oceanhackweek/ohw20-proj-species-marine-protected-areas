@@ -6,9 +6,12 @@
 library(shiny)
 library(sf)
 library(dplyr)
+library(ggplot2)
+library(robis)
 
 ## Server functions ##
 source("R-code/wdpar-package.R")
+
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -91,11 +94,26 @@ server <- function(input, output) {
         output$mpa_highlight <- renderUI(
             selectInput(inputId = "mpa_select", label="MPA:", choices=mpas$WDPAID)
         )
+        # Render table with meta data about the selected MPA
         output$mpa_highlight_table <- renderTable({
             req(input$mpa_select)
             df<-filter(mpas, WDPAID==input$mpa_select) %>% as_tibble() %>% select(-geom) %>% t() %>% as.data.frame() %>% tibble::rownames_to_column()
         },
         colnames=FALSE, spacing = "xs", width="100%", align="l")
+        
+        # Render plot showing placeholder plot for biodiversity in the selected MPA
+        output$obis_plot <- renderPlot({
+            req(input$mpa_select)
+            df <- filter(mpas, WDPAID==input$mpa_select)
+            obis_table <- robis::occurrence(geometry = sf::st_as_text(sf::st_convex_hull(sf::st_geometry(df)))) %>% 
+                group_by(year) %>% 
+                summarise(richness = n_distinct(genus)) %>% 
+                filter(!is.na(year))
+            ggplot(obis_table, aes(x=year, y=richness)) +
+                geom_point(size=5, color="blue") +
+                labs(x="") +
+                theme_classic()
+        })
     })
     
 
