@@ -20,8 +20,7 @@ obis_fetch_mpa <- function(x = read_wdpa_country("Belgium"),
   get_one_mpa <- function(x, key){
     r <- try(robis::occurrence(geometry = sf::st_as_text(sf::st_convex_hull(sf::st_geometry(x)))))
     if (inherits(r, "try-error")){
-      warning("error fetching obis data")
-      print(r)
+      warning("error fetching obis datafir WDPAID:", x$WDPAID[1])
       r <- NULL
     }
     r
