@@ -1,6 +1,52 @@
 source("R-code/google-filestream.R")
 source("R-code/wdpar-package.R")
 
+#' Ensure that a set of OBIS observations actually fall within a set of MPAs
+#' 
+#' @param obs tibble of OBIS observations
+#' @param mpa sf MULTIPOLYGON object of MPAs form WDPA
+#' @param form character one of 
+#' \itemize{
+#' \item{tibble return a tibble}
+#' \item{sf return an sf object (spatially referenced tibble)}
+#' \item{index a list of indices that provide the match between obs and mpas}
+#' }
+#' @return tibble of obs with possibly fewer rows
+#' @examples 
+#' \dontrun{
+#'   mpa = wdpa_read_country("Belgium")
+#'   obs = read_obis_country("Belgium")
+#'   obs_strict <- obis_strict_match(obs, mpa)
+#'   dim(obs)
+#'   # [1] 511490    161
+#'   dim(obs_strict)
+#'   # [1] 480302    161
+#' }
+obis_strict_match <- function(obs = read_obis_country("Belgium"),
+                              mpa = wdpa_read_country("Belgium"),
+                              form = c("tibble", "sf", "index")[1]){
+  
+  obsf <- obis_as_sf(obs, crs = sf::st_crs(mpa) )
+  ix <- mpa_match(mpa, obsf)
+  
+  switch(tolower(form[1]),
+         "tibble" = obs %>% dplyr::filter(lengths(ix) > 0),
+         "sf"     =  obsf %>% dplyr::filter(lengths(ix) > 0),
+         ix) # anything else
+}
+
+
+
+#' Cast an OBIS data frame as a simple feature (POINT)
+#' 
+#' @param x tibble of OBIS data
+#' @param ... other arguments for \code{\link[sf]{st_as_sf}} - note \code{crs} argument
+#' @return sf object (POINT)
+obis_as_sf <- function(x, ...){
+  sf::st_as_sf(x, coords = c("decimalLongitude", "decimalLatitude"), ...)
+}
+
+
 #' Given a simple features tibble (POLYGON or MUTLIPOLYGON), retrieve OBIS observation records.
 #'
 #' @param x POLYGON or MULTIPOLYGON sf object such as for a country
@@ -33,7 +79,7 @@ obis_fetch_mpa <- function(x = read_wdpa_country("Belgium"),
     dplyr::bind_rows()
 
   if (tolower(policy[1]) == "strict"){
-    # refilter to just those captured by the polygons - no outliers
+    r <- obis_strict_match(x, r)
   }
   
   r
