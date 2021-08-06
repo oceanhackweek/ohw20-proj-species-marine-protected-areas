@@ -3,8 +3,8 @@ source("R-code/wdpar-package.R")
 
 #' Ensure that a set of OBIS observations actually fall within a set of MPAs
 #' 
-#' @param mpa sf MULTIPOLYGON object of MPAs form WDPA
 #' @param obs tibble of OBIS observations
+#' @param mpa sf MULTIPOLYGON object of MPAs form WDPA
 #' @param form character one of 
 #' \itemize{
 #' \item{tibble return a tibble}
@@ -16,14 +16,14 @@ source("R-code/wdpar-package.R")
 #' \dontrun{
 #'   mpa = wdpa_read_country("Belgium")
 #'   obs = read_obis_country("Belgium")
-#'   obs_strict <- obis_strict_match(mpa, obs)
+#'   obs_strict <- obis_strict_match(obs, mpa)
 #'   dim(obs)
 #'   # [1] 511490    161
 #'   dim(obs_strict)
 #'   # [1] 480302    161
 #' }
-obis_strict_match <- function(mpa = wdpa_read_country("Belgium"),
-                              obs = read_obis_country("Belgium"),
+obis_strict_match <- function(obs = read_obis_country("Belgium"),
+                              mpa = wdpa_read_country("Belgium"),
                               form = c("tibble", "sf", "index")[1]){
   
   obsf <- obis_as_sf(obs, crs = sf::st_crs(mpa) )
