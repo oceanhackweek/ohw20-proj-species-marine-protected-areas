@@ -48,8 +48,8 @@ server <- function(input, output) {
         yr.max <- max(country()$STATUS_YR)
         tagList(
 
-            sliderInput(inputId = "status_yr_range", label="Year", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max), sep = ""),
-            checkboxGroupInput(inputId="iucn_cat", label="IUCN Categories", choices=unique(country()$IUCN_CAT[order(match(country()$IUCN_CAT, c("Ia","Ib","II","III","IV","V","VI","Not Applicable","Not Assigned","Not Reported")))]))
+            sliderInput(inputId = "status_yr_range", label="Filter by Year Established:", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max), sep = ""),
+            checkboxGroupInput(inputId="iucn_cat", label="Filter by IUCN Categories:", choices=unique(country()$IUCN_CAT[order(match(country()$IUCN_CAT, c("Ia","Ib","II","III","IV","V","VI","Not Applicable","Not Assigned","Not Reported")))]))
 
         )
     })
@@ -69,7 +69,7 @@ server <- function(input, output) {
 
     })
     
-    # Subset country data to IUCN category selection
+    # Subset country data based on year est. and IUCN category selection
     iucn <- reactive({
         country() %>% 
             filter(., IUCN_CAT %in% input$iucn_cat & STATUS_YR >= min(input$status_yr_range) & STATUS_YR <= max(input$status_yr_range))
@@ -92,7 +92,7 @@ server <- function(input, output) {
         leafletProxy("ui_mymap") %>%
             addPopups(data=mpas, lng=click$lng, lat=click$lat, popup=~sprintf("%s records found", nrow(mpas)))
         output$mpa_highlight <- renderUI(
-            selectInput(inputId = "mpa_select", label="MPA:", choices=mpas$WDPAID)
+            selectInput(inputId = "mpa_select", label="If multiple MPAs overlap, select one:", choices=mpas$WDPAID)
         )
         # Render table with meta data about the selected MPA
         output$mpa_highlight_table <- renderTable({
@@ -101,7 +101,7 @@ server <- function(input, output) {
         },
         colnames=FALSE, spacing = "xs", width="100%", align="l")
         
-        # Render plot showing placeholder plot for biodiversity in the selected MPA
+        # Fetch OBIS data for selected MPA and render plot showing placeholder plot for richness
         output$obis_plot <- renderPlot({
             req(input$mpa_select)
             df <- filter(mpas, WDPAID==input$mpa_select)
@@ -111,8 +111,14 @@ server <- function(input, output) {
                 filter(!is.na(year))
             ggplot(obis_table, aes(x=year, y=richness)) +
                 geom_point(size=5, color="blue") +
-                labs(x="") +
+                labs(x="", y="Distinct genera observed") + # axis labels need to be bigger
                 theme_classic()
+        })
+        
+        # Render text to appear with results (i.e. the plot and table)
+        output$about_this_mpa <- renderUI({
+            req(input$mpa_select)
+            h3("About this MPA:")
         })
     })
     
