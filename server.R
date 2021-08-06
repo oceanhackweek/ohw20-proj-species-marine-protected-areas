@@ -102,7 +102,7 @@ server <- function(input, output) {
         # Render table with meta data about the selected MPA
         output$mpa_highlight_table <- renderTable({
             req(input$mpa_select)
-            df<-filter(mpas, WDPAID==input$mpa_select) %>% as_tibble() %>% select(-geom) %>% t() %>% as.data.frame() %>% tibble::rownames_to_column()
+            df<-filter(mpas, WDPAID==input$mpa_select) %>% as_tibble() %>% select(-geom,-ORIG_NAME, -PARENT_ISO, -ISO3, -SUPP_INFO, -CONS_OBJ) %>% t() %>% as.data.frame() %>% tibble::rownames_to_column()
         },
         colnames=FALSE, spacing = "xs", width="100%", align="l")
         
@@ -116,8 +116,10 @@ server <- function(input, output) {
                 filter(!is.na(year))
             ggplot(obis_table, aes(x=year, y=richness)) +
                 geom_point(size=5, color="blue") +
-                labs(x="", y="Distinct genera observed") + # axis labels need to be bigger
-                theme_classic()
+                labs(x="", y="Distinct genera observed") + # axis labels need to be bigger +
+                theme_bw() +
+                theme(text = element_text(size=16))
+                
         })
         
         
@@ -158,8 +160,9 @@ server <- function(input, output) {
                     ggplot(aes(x = year, y = mean_SST)) + 
                     geom_point(size = 5, color = "green") + 
                     scale_x_continuous(breaks = seq(2010, 2020, by = 2)) + 
-                    theme_classic() + 
-                    labs(y = "Average Annual SST", x = "Year")
+                    theme_bw() + 
+                    labs(y = "Average Annual SST", x = "Year") +
+                    theme(text = element_text(size=16)) 
         })
             
         # Render text to appear with results (i.e. the plot and table)
