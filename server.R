@@ -8,6 +8,11 @@ library(sf)
 library(dplyr)
 library(ggplot2)
 library(robis)
+library(rerddapXtracto)
+library(rerddap)
+library(reshape2)
+library(lubridate)
+
 
 ## Server functions ##
 source("R-code/wdpar-package.R")
