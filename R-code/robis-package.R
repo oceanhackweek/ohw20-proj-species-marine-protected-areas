@@ -40,6 +40,7 @@ obis_strict_match <- function(mpa = wdpa_read_country("Belgium"),
 #' Cast an OBIS data frame as a simple feature (POINT)
 #' 
 #' @param x tibble of OBIS data
+#' @param ... other arguments for \code{\link[sf]{st_as_sf}} - note \code{crs} argument
 #' @return sf object (POINT)
 obis_as_sf <- function(x, ...){
   sf::st_as_sf(x, coords = c("decimalLongitude", "decimalLatitude"), ...)
