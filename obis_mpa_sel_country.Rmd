@@ -1,0 +1,135 @@
+---
+title: "obis_mpa_sel_country"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sf)
+library(dplyr)
+library(robis)
+library(leaflet)
+library(data.table)
+source("R-code/wdpar-package.R")
+
+# robis::occurrence() expect filtering polygons in a well-known-text represerntation (aka WKT)
+extract_polygon_geometry <- function(polygon) {
+  polygon %>%
+    sf::st_geometry() %>%
+    sf::st_as_text()
+}
+
+```
+
+## Grabs global WDPA dataset and filters by selected country using ISO3 codes (https://unstats.un.org/unsd/tradekb/knowledgebase/country-code)
+
+```{r}
+country_mpa <- wdpa_read_global(filestream=TRUE) %>%
+  dplyr::filter(ISO3 %in% "BEL")
+```
+
+
+## Extract occurence data from OBIS within MPAs for selected country (takes a long time for data rich MPAs!)
+
+```{r obis}
+
+# gets the occurrence data for a single multipolygon (one row of WDPA table)
+# get_one_mpa <- function(x, key){
+#    robis::occurrence(geometry = sf::st_as_text(sf::st_convex_hull(sf::st_geometry(x))))
+# }
+# 
+# df <- country_mpa %>%
+#   dplyr::rowwise() %>%
+#   dplyr::group_map(get_one_mpa,
+#                    .keep = TRUE) %>%
+#   dplyr::bind_rows()
+   
+```
+
+## Visualize occurrence records from OBIS for selected country (takes a long time for data rich MPAs!)
+
+```{r}
+# leaflet() %>%
+#   addTiles("https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png") %>%
+#   addCircleMarkers(lat = df$decimalLatitude, lng = df$decimalLongitude, radius = 5, weight = 0, fillOpacity = 1, fillColor = "#cc3300")
+
+```
+
+## Extracts OBIS records within all MPAs for selected country
+
+```{r}
+convert_mpa_to_WKT <- function(x){
+  st_as_text(st_convex_hull(st_geometry(x)))
+}
+
+get_datasets <- function(x){
+  get_one_dataset <- function(x, key){
+    robis::dataset(geometry=convert_mpa_to_WKT(x))
+  }
+  x %>% 
+    dplyr::rowwise() %>% 
+    dplyr::group_map(get_one_dataset, .keep=TRUE) %>% 
+    dplyr::bind_rows()
+}
+
+##obis_rec <- get_datasets(country_mpa)
+```
+
+## This function needs to be run before the next code chunk
+
+```{r}
+  get_one_dataset <- function(x, key){
+    robis::dataset(geometry=convert_mpa_to_WKT(x))
+  }
+```
+
+## Extracts OBIS records by looping through the list of MPAs for selected country
+
+```{r}
+rec_summ <- matrix(ncol = 2, nrow = nrow(country_mpa)) 
+
+for (j in 1:nrow(country_mpa)){
+  mpa_rec <- country_mpa$geom[j] %>% get_one_dataset()
+    if(nrow(mpa_rec) > 0)
+      num_rec <- sum(mpa_rec$records)
+      mpa_id <- country_mpa$WDPA_PID[j]
+      rec_summ[j, ] <- cbind(mpa_id, as.integer(num_rec))
+}
+rec_summ <- data.frame(rec_summ) 
+colnames(rec_summ) <- c("WDPAID", "records")
+```
+
+## This adds number of OBIS records to 'country_map' object
+
+```{r}
+country_mpa2 <- cbind(country_mpa, rec_summ$records) %>% setnames(old = c('rec_summ.records'), new = c('records'))
+country_mpa2$records <- sapply(country_mpa2$records, as.numeric)
+```
+
+## Generates map with MPAs with WDPAID and number of OBIS records
+
+```{r}
+bins <- c(0, 1000, 10000, 100000, 200000, Inf)
+pal <- colorBin("YlOrRd", domain = country_mpa2$records, bins = bins)
+
+leafletplot <- leaflet(data=country_mpa2) %>% 
+  addProviderTiles(providers$Stamen.Watercolor, options = providerTileOptions(noWrap = TRUE)) %>% 
+  addPolygons(
+    popup = ~sprintf("%s, %s", WDPAID, records),
+    fillColor = ~pal(records),
+      weight = 2,
+      opacity = 1,
+      color = "white",
+      dashArray = "3",
+      fillOpacity = 0.7) %>% 
+  addLegend(pal = pal, values = ~records, opacity = 0.7, title = NULL,
+  position = "bottomright")
+leafletplot 
+```
+
+
+
+
+
