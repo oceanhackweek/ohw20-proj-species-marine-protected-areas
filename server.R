@@ -8,6 +8,11 @@ library(sf)
 library(dplyr)
 library(ggplot2)
 library(robis)
+library(rerddapXtracto)
+library(rerddap)
+library(reshape2)
+library(lubridate)
+
 
 ## Server functions ##
 source("R-code/wdpar-package.R")
@@ -48,8 +53,8 @@ server <- function(input, output) {
         yr.max <- max(country()$STATUS_YR)
         tagList(
 
-            sliderInput(inputId = "status_yr_range", label="Year", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max), sep = ""),
-            checkboxGroupInput(inputId="iucn_cat", label="IUCN Categories", choices=unique(country()$IUCN_CAT[order(match(country()$IUCN_CAT, c("Ia","Ib","II","III","IV","V","VI","Not Applicable","Not Assigned","Not Reported")))]))
+            sliderInput(inputId = "status_yr_range", label="Filter by Year Established:", min = yr.min, max=yr.max, step=1, value=c(yr.min,yr.max), sep = ""),
+            checkboxGroupInput(inputId="iucn_cat", label="Filter by IUCN Categories:", choices=unique(country()$IUCN_CAT[order(match(country()$IUCN_CAT, c("Ia","Ib","II","III","IV","V","VI","Not Applicable","Not Assigned","Not Reported")))]))
 
         )
     })
@@ -69,7 +74,7 @@ server <- function(input, output) {
 
     })
     
-    # Subset country data to IUCN category selection
+    # Subset country data based on year est. and IUCN category selection
     iucn <- reactive({
         country() %>% 
             filter(., IUCN_CAT %in% input$iucn_cat & STATUS_YR >= min(input$status_yr_range) & STATUS_YR <= max(input$status_yr_range))
@@ -92,7 +97,7 @@ server <- function(input, output) {
         leafletProxy("ui_mymap") %>%
             addPopups(data=mpas, lng=click$lng, lat=click$lat, popup=~sprintf("%s records found", nrow(mpas)))
         output$mpa_highlight <- renderUI(
-            selectInput(inputId = "mpa_select", label="MPA:", choices=mpas$WDPAID)
+            selectInput(inputId = "mpa_select", label="If multiple MPAs overlap, select one:", choices=mpas$WDPAID)
         )
         # Render table with meta data about the selected MPA
         output$mpa_highlight_table <- renderTable({
@@ -101,7 +106,7 @@ server <- function(input, output) {
         },
         colnames=FALSE, spacing = "xs", width="100%", align="l")
         
-        # Render plot showing placeholder plot for biodiversity in the selected MPA
+        # Fetch OBIS data for selected MPA and render plot showing placeholder plot for richness
         output$obis_plot <- renderPlot({
             req(input$mpa_select)
             df <- filter(mpas, WDPAID==input$mpa_select)
@@ -111,8 +116,56 @@ server <- function(input, output) {
                 filter(!is.na(year))
             ggplot(obis_table, aes(x=year, y=richness)) +
                 geom_point(size=5, color="blue") +
-                labs(x="") +
+                labs(x="", y="Distinct genera observed") + # axis labels need to be bigger
                 theme_classic()
+        })
+        
+        
+        output$sst_plot <- renderPlot ({
+            req(input$mpa_select)
+            df <- filter(mpas, WDPAID==input$mpa_select)
+            polygon <- data.frame(sf::st_coordinates(df))
+            
+            Melt_SpatialData <- function(DataOutput, parameter) { #when you use this function, you have to tell R what the dataoutput you want to use is and what the parameter you want to use it
+                latl <- length(DataOutput$latitude)
+                longl <- length(DataOutput$longitude)
+                tl <- length(DataOutput$time)
+                OutputTidy <- melt(DataOutput)
+                OutputTidy$long <- "NA"
+                OutputTidy$lat <- "NA"
+                #there are some extra numbers in the end because of how data are melted -- length of b should be cut off at length of lat * length of long * length of date
+                totall <- latl*longl * tl
+                OutputTidy <- OutputTidy[1:totall,]
+                #have to base these numbers on length of lat, length of long, length of date
+                #long repeats entire vector at length of lat * length of date
+                #lat repeats each number within vector at length of long
+                #date repeats each date within vector at length of lat * length of long
+                OutputTidy$long <- rep(DataOutput$longitude, latl*tl) #long is laid out 1, 2, 3, 1, 2, 3 so don't need each 
+                OutputTidy$lat <- rep(DataOutput$latitude, each = longl) #lat is laid out 1,1,1,,2,2,2 so need each 
+                OutputTidy$time <- rep(DataOutput$time, each = latl * longl)
+                OutputTidy[[parameter]] <- OutputTidy$value
+                return(OutputTidy[,6:9]) #this is getting rid of the unnamed columns for a tidy output
+            }
+            
+            sst_info = rerddap::info('jplMURSST41mday') #note - this is a monthly dataset, then I am averaging across months to get the year average which...isn't great. there are daily datasets but those would take even longer to load. will figure out a solution for this.
+            sst_data <- rerddapXtracto::rxtractogon(sst_info, parameter = "sst", xcoord = polygon$X, ycoord = polygon$Y, tcoord = c("2010-01-01", "2020-12-31")) 
+            sst_tidy <- Melt_SpatialData(DataOutput = sst_data, parameter = "sst") 
+            sst_tidy %>%
+                filter(!is.na(sst)) %>%
+                mutate(year = year(time), sst = as.numeric(sst), year = as.numeric(year)) %>%
+                group_by(year) %>%
+                summarize(mean_SST = mean(sst)) %>% 
+                    ggplot(aes(x = year, y = mean_SST)) + 
+                    geom_point(size = 5, color = "green") + 
+                    scale_x_continuous(breaks = seq(2010, 2020, by = 2)) + 
+                    theme_classic() + 
+                    labs(y = "Average Annual SST", x = "Year")
+        })
+            
+        # Render text to appear with results (i.e. the plot and table)
+        output$about_this_mpa <- renderUI({
+            req(input$mpa_select)
+            h3("About this MPA:")
         })
     })
     
