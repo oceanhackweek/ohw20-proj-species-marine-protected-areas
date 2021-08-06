@@ -26,6 +26,8 @@ ui <- navbarPage(title = "Nav: ",
                                      fluidRow(actionButton(inputId="update_country", "Update country")),
                                      fluidRow(uiOutput("ui_update_filter"))
                                      ),
+                              column(6,
+                                     plotOutput(outputId = "obis_plot")),
                  ),
                  tabPanel("OBIS options",
                           sidebarLayout(
