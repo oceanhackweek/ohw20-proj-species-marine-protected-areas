@@ -62,7 +62,9 @@ ui <- navbarPage(title = "",
                                    fluidRow(tableOutput("mpa_highlight_table"))#)
                                    ),
                             column(6,
-                                   plotOutput(outputId = "obis_plot"))
+                                   plotOutput(outputId = "obis_plot")), 
+                            column(6,
+                                   plotOutput(outputId = "sst_plot"))
                             ),
                           ),
                  # second tab
