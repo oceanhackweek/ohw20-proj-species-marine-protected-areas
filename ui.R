@@ -51,7 +51,7 @@ ui <- navbarPage(title = "",
                                   br(),
                                   fluidRow(uiOutput("mpa_highlight"))
                                           ),
-                              mainPanel(leafletOutput("ui_mymap"))
+                              mainPanel(leafletOutput("ui_mymap",height="63vh"))
                               ),
                           fluidRow(
                             uiOutput("about_this_mpa")
