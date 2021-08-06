@@ -92,6 +92,8 @@ rec_summ <- matrix(ncol = 2, nrow = nrow(country_mpa))
 
 for (j in 1:nrow(country_mpa)){
   mpa_rec <- country_mpa$geom[j] %>% get_one_dataset()
+    if(nrow(mpa_rec) == 0)
+      num_rec <- 0
     if(nrow(mpa_rec) > 0)
       num_rec <- sum(mpa_rec$records)
       mpa_id <- country_mpa$WDPA_PID[j]
