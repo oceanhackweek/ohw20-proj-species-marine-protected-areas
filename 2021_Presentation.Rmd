@@ -1,6 +1,6 @@
 ---
 title: "2021_Presentation"
-output: github_document
+output: html_document
 ---
 
 # Visualizing Marine Protected Areas and Biodiversity
@@ -40,9 +40,13 @@ The International Union for Conservation of Nature has 7 categoies for classifyi
 ```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
 library(sf)
-library(dplyr)
+library(tidyverse)
+library(reshape2)
 library(robis)
-source("R-code/wdpar-package.R")
+library(leaflet)
+library(ggplot2)
+library(vegan)
+source("R-code/robis-package.R")
 
 # robis::occurrence() expect filtering polygons in a well-known-text represerntation (aka WKT)
 extract_polygon_geometry <- function(polygon) {
@@ -73,24 +77,24 @@ get_datasets <- function(x){
 
 ```{r, cache=TRUE}
 # reading in the global MDPA file
-global <- wdpa_read_global(filestream=TRUE)
+# global <- wdpa_read_global(filestream=TRUE)
+# saveRDS(global, file="delete_after_ohw21_2.rds")
+global <- readRDS("delete_after_ohw21_2.rds")
 # subsetting for Belgium
 belgium <- global %>% filter(ISO3 %in% "BEL")
 # Retrieving all OBIS records for Belgium
-bel_spoc <- belgium %>%
-  dplyr::rowwise() %>%
-  dplyr::group_map(get_one_mpa,
-                   .keep = TRUE) %>%
-  dplyr::bind_rows()
+# bel_spoc <- read_obis_country("Belgium")
 # Getting a subregion's OBIS records
-belgium_sub_obis <- filter(belgium, WDPAID==555536869) %>% get_one_mpa()
+#belgium_sub_obis <- filter(belgium, WDPAID==555536868) %>% get_one_mpa()
+#saveRDS(belgium_sub_obis, "delete_after_ohw21.rds")
+belgium_sub_obis <- readRDS("delete_after_ohw21.rds")
 ```
 
 ## Belgium's OBIS data
-We chose to use Belgium as an example for this section because it's very data rich for OBIS. The main OBIS office is in Belgium! In this small area there are `r nrow(bel_spoc)` observations. Here's an example of what the OBIS tables look like:
+We chose to use Belgium as an example for this section because it's very data rich for OBIS. The main OBIS office is in Belgium! In this small area there are over half and million observations. Here's an example of what the OBIS tables look like:
 
 ```{r display OBIS table}
-head(bel_spoc %>% select(scientificName, class, infraclass, genus, eventDate))
+head(belgium_sub_obis %>% select(scientificName, class, infraclass, genus, eventDate))
 ```
 So, even though Belgium's MPAs are a small area, for the purposes of this demo, we're going to only pull OBIS records for the tiny region in the northeast. In the Shiny App, we plan on having the user select MPAs by clicking or filtering by certain parameters such as IUCN category or year established and only pulling OBIS records from those regions. 
 ```{r plotting belgium}
@@ -102,18 +106,44 @@ leafletplot
 Here are all the observations from that region 
 ```{r visualize OBIS record locations}
 # Visualize OBIS records for this 
+belgium_sub <- filter(belgium, WDPAID==555536868)
 leaflet() %>%
   addProviderTiles(provider = providers$Stamen.Watercolor) %>%
-  addPolygons(data=filter(belgium, WDPAID==555536869)) %>% 
+  addPolygons(data=belgium_sub) %>% 
   addCircleMarkers(lat = belgium_sub_obis$decimalLatitude, lng = belgium_sub_obis$decimalLongitude, radius = 3, weight = 0, fillOpacity = .7, fillColor = "#CC3300")
 ```
 ## Biodiversity measurements for this region
 
 **Explanation of ES50 measurement***
+
 ```{r}
-# Plot of ES50 over time?
-# Plot of alpha diversity over time?
+# remove terrestrial species
+species_occurence <- belgium_sub_obis %>% filter(terrestrial==FALSE)
+
+# make species abundance table by year
+species_occurence <- species_occurence %>% group_by(date_year, scientificName) %>% summarise(occurences = n())
 ```
 
-## Biodiversity over time
+```{r}
+species_occurence %>% group_by(date_year) %>% summarise(total_occ = sum(occurences)) %>% ggplot(aes(x=date_year, y=total_occ))+geom_line()+labs(x="Year", y="Total occurences (all species", title="Uneven sampling effort through the years")
+```
+ES50 is also sensitive to the total number of species. It's generally best when there are >50 species
+```{r}
+# unique species by year
+belgium_sub_obis %>% filter(date_year>1975 & date_year<2018) %>% group_by(date_year) %>% summarise(unqs=length(unique(scientificName))) %>% ggplot(aes(x=date_year, y=unqs))+geom_line()+labs(x="Year", y="Unique species")+geom_hline(yintercept=50)
+```
 
+So, let's look at ES50 before and after 2010, which is when this region was established as an MPA
+
+```{r}
+year <- belgium_sub$STATUS_YR
+species_occurence <- mutate(species_occurence, before=date_year<year)
+occurence_matrix_before <- species_occurence %>% filter(before) %>% select(-before) %>% pivot_wider(names_from = date_year, values_from=occurences, names_sort=TRUE, values_fill=0)
+occurence_matrix_after <- species_occurence %>% filter(!before) %>% select(-before) %>% pivot_wider(names_from = date_year, values_from=occurences, names_sort=TRUE, values_fill=0)
+occurence_matrix <- species_occurence %>% select(-before) %>% pivot_wider(names_from = scientificName, values_from=occurences, names_sort=TRUE, values_fill=0) %>% filter(!is.na(date_year)) %>% column_to_rownames(var="date_year")
+
+es50<-rarefy(occurence_matrix, 50) %>% as_tibble(rownames="date_year")
+ggplot(es50 %>% filter(date_year>1975 & date_year<2018), aes(x=as.numeric(date_year), y=value)) + geom_line() + geom_vline(xintercept = year, color="green") + labs(x="Year", y="ES50")
+```
+
+This graph illustrates why the choice of MPA is very important. The MPA needs to be in a data rich region for OBIS records, and needs to have been established long enough ago to see effects. 
