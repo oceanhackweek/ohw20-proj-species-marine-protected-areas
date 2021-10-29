@@ -8,7 +8,7 @@
 # source("setup.R")
 
 # but we do need these
-source("R-code/google-filestream.R")
+source("google-filestream.R")
 require(wdpar)
 
 # note table of accepted countries

@@ -53,33 +53,37 @@ calculate_es50 <- function(mpa,
                                 by=list(Category=age_records$phylum), 
                                 FUN=sum)
       
-      #can be used to store the number of unique species
-      species_count <- nrow(species_counts)
-      
       if (nrow(species_counts) >= 50) {
         cat(paste(mpa$WDPAID, "calculating es50, age:", age, "\n", sep=" "))
         
-        es_50 <- vegan::rarefy(species_counts$x, 50)
+        es_50 <- vegan::rarefy(as.integer(species_counts$x), 50)
         
         mpa <- mpa %>% 
-          dplyr::mutate("age_{age}"         := es_50,
+          dplyr::mutate("es50_age_{age}"    := es_50,
                         "species_age_{age}" := nrow(species_counts),
-                        "phylum_age_{age}"   := nrow(phylum_counts),
+                        "phylum_age_{age}"  := nrow(phylum_counts),
                         "records_age_{age}" := sum(species_counts$x),
                         .before=.data$geom)
         
         return(mpa)
-      }
-      else {
+      } else {
         cat(paste(mpa$WDPAID, "Less than 50 species records, age:", age, "\n", sep=" "))
         
         mpa <- mpa %>% 
-          dplyr::mutate("age_{age}" := NA, 
+          dplyr::mutate("es50_age_{age}"    := NA_real_,
+                        "species_age_{age}" := NA_real_,
+                        "phylum_age_{age}"  := NA_real_,
+                        "records_age_{age}" := NA_real_,
                         .before=.data$geom)
       }
     } else {
+      cat(paste(mpa$WDPAID, "No records, age:", age, "\n", sep=" "))
+      
       mpa <- mpa %>% 
-        dplyr::mutate("age_{age}" := NA, 
+        dplyr::mutate("es50_age_{age}"    := NA_real_,
+                      "species_age_{age}" := NA_real_,
+                      "phylum_age_{age}"  := NA_real_,
+                      "records_age_{age}" := NA_real_,
                       .before=.data$geom)
     }
     return(mpa)
@@ -91,7 +95,12 @@ calculate_es50 <- function(mpa,
   
   if (inherits(species_occurence, "try-error")) {
     species_occurence <- NULL
-    cat("occurence fetching try-error", "\n")
+    cat(paste(mpa$WDPAID, "occurence fetching try-error", "\n", sep=" "))
+    
+  }
+  if (!"date_year" %in% colnames(species_occurence)) {
+    cat(paste(mpa$WDPAID, "date not available from obis records", "\n", sep=" "))
+    return(mpa)
   }
   
   if (!is_empty(species_occurence)) {
@@ -120,7 +129,7 @@ calculate_es50 <- function(mpa,
                     .before=.data$geom)
     
     if (nrow(species_count) >= 50){
-      total_es50 = vegan::rarefy(species_count$x,50)
+      total_es50 = vegan::rarefy(as.integer(species_count$x),50)
       
       mpa <- mpa %>% 
         dplyr::mutate(total_es50 = total_es50, 
@@ -130,57 +139,66 @@ calculate_es50 <- function(mpa,
     records_before <- species_occurence %>% 
       dplyr::filter(.data$date_year < mpa$STATUS_YR)
     
-    species_count_before <- aggregate(records_before$Count, 
-                                      by=list(Category=records_before$scientificName),
-                                      FUN=sum)
-    
-    phylum_count_before <- aggregate(records_before$Count, 
-                                     by=list(Category=records_before$phylum),
-                                     FUN=sum)
-    
-    n_records_before <- sum(species_count_before$x)
-    
-    mpa <- mpa %>% 
-      dplyr::mutate(species_count_before = nrow(species_count_before),
-                    phylum_count_before  = nrow(phylum_count_before),
-                    records_before       = n_records_before,
-                    .before=.data$geom)
-    
-    if (nrow(species_count_before) >= 50) {
-      es50_before <- vegan::rarefy(species_count_before, 50)
+    if (nrow(records_before) == 0) {
+      cat(paste(mpa$WDPAID, "No obis records before mpa establishment", "\n", sep=" "))
+    } else {
+      species_count_before <- aggregate(records_before$Count, 
+                                        by=list(Category=records_before$scientificName),
+                                        FUN=sum)
+      
+      phylum_count_before <- aggregate(records_before$Count, 
+                                       by=list(Category=records_before$phylum),
+                                       FUN=sum)
+      
+      n_records_before <- sum(species_count_before$x)
       
       mpa <- mpa %>% 
-        dplyr::mutate(es50_before = es50_before,
+        dplyr::mutate(species_count_before = nrow(species_count_before),
+                      phylum_count_before  = nrow(phylum_count_before),
+                      records_before       = n_records_before,
                       .before=.data$geom)
+      
+      if(nrow(species_count_before) >= 50) {
+        es50_before <- vegan::rarefy(as.integer(species_count_before$x), 50)
+        
+        mpa <- mpa %>% 
+          dplyr::mutate(es50_before = es50_before,
+                        .before=.data$geom)
+      }
     }
     
     records_after <- species_occurence %>% 
       dplyr::filter(.data$date_year >= mpa$STATUS_YR)
     
-    species_count_after <- aggregate(records_after$Count, 
-                                     by=list(Category=records_after$scientificName),
-                                     FUN=sum)
-    
-    phylum_count_after <- aggregate(records_after$Count, 
-                                    by=list(Category=records_after$phylum),
-                                    FUN=sum)
-    
-    n_records_after <- sum(species_count_after$x)
-    
-    mpa <- mpa %>% 
-      dplyr::mutate(species_count_after = nrow(species_count_after),
-                    phylum_count_after  = nrow(phylum_count_after),
-                    records_after       = n_records_after,
-                    .before=.data$geom)
-    
-    if (nrow(species_count_after) >= 50) {
-      es50_after <- vegan::rarefy(species_count_after$x, 50)
+    if (nrow(records_after) == 0) {
+      cat(paste(mpa$WDPAID, "No obis records after mpa establishment", "\n", sep=" "))
+    } else {
+      
+      species_count_after <- aggregate(records_after$Count, 
+                                       by=list(Category=records_after$scientificName),
+                                       FUN=sum)
+      
+      phylum_count_after <- aggregate(records_after$Count, 
+                                      by=list(Category=records_after$phylum),
+                                      FUN=sum)
+      
+      n_records_after <- sum(species_count_after$x)
       
       mpa <- mpa %>% 
-        dplyr::mutate(es50_after = es50_after,
+        dplyr::mutate(species_count_after = nrow(species_count_after),
+                      phylum_count_after  = nrow(phylum_count_after),
+                      records_after       = n_records_after,
                       .before=.data$geom)
+      
+      if (nrow(species_count_after) >= 50) {
+        es50_after <- vegan::rarefy(as.integer(species_count_after$x), 50)
+        
+        mpa <- mpa %>% 
+          dplyr::mutate(es50_after = es50_after,
+                        .before=.data$geom)
+      }
     }
-    
+
     if ("date_year" %in% colnames(species_occurence)) {
 
       for (age in ages) {
@@ -194,44 +212,3 @@ calculate_es50 <- function(mpa,
   
   return(mpa)
 }
-
-
-
-#Example script to use calculate_es50() for all mpa records from a country
-country = "USA"
-
-#we could dynamically find a list of ages by looking at a summary of the year column after reading the WDPA or in the occurrence records...
-ages <- c(-40, -20, 0, 20, 40, 60, 80)
-
-WDPA <- wdpa_read_country(country, team = "ohw-obis-mpa", ext = ".gpkg") %>%
-  dplyr::filter(MARINE > 0)
-
-wdpa <- head(WDPA, n=8)
-
-x <- wdpa %>% 
-  dplyr::select(WDPAID, 
-                NAME, 
-                IUCN_CAT,
-                REP_AREA,
-                REP_M_AREA, 
-                STATUS, 
-                STATUS_YR, 
-                geom) %>% 
- # dplyr::filter(sapply(.data$geom, function(x) class(x)[2]) == "MULTIPOLYGON") %>% 
-  dplyr::filter(sapply(.data$geom, function(x) inherits(x, "MULTIPOLYGON"))) %>% 
-  dplyr::group_by(WDPAID) %>% 
-  dplyr::group_map(calculate_es50, ages, .keep=TRUE) %>% 
-  dplyr::bind_rows()
-
-
-mpa <- wdpa %>% 
-  dplyr::filter(WDPAID == 95312) %>% 
-  dplyr::select(WDPAID, 
-                NAME, 
-                IUCN_CAT,
-                REP_AREA,
-                REP_M_AREA, 
-                STATUS, 
-                STATUS_YR, 
-                geom)
-
